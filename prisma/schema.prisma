@@ -28,6 +28,13 @@ enum OrderStatus {
   RETURNED
 }
 
+enum NotificationType {
+  ORDER_STATUS_CHANGE
+  ORDER_ASSIGNED
+  PAYMENT_RECEIVED
+  SYSTEM_ALERT
+}
+
 model Tenant {
   id        String       @id @default(uuid())
   name      String
@@ -42,6 +49,8 @@ model Tenant {
   couriers         CourierProfile[]
   orders           Order[]
   orderHistories   OrderHistory[]
+  uploadedFiles    UploadedFile[]
+  notifications    Notification[]
 
   @@map("tenants")
 }
@@ -65,6 +74,7 @@ model User {
 
   // Audit trail
   actionsPerformed OrderHistory[] @relation("ActionPerformer")
+  notificationsReceived Notification[] @relation("NotificationRecipient")
 
   @@index([tenantId])
   @@map("users")
@@ -94,7 +104,7 @@ model CourierProfile {
   tenant    Tenant   @relation(fields: [tenantId], references: [id])
   
   vehicleInfo String?
-  wallet      Decimal  @default(0) @db.Decimal(10, 2) // Cash on Hand
+  wallet      Decimal  @default(0) @db.Decimal(10, 2)
   
   assignments Order[]
 
@@ -126,14 +136,16 @@ model Order {
   city           String
   
   // Financials
-  price     Decimal @db.Decimal(10, 2) // Shipping Fee
-  codAmount Decimal @db.Decimal(10, 2) // Cash on Delivery Amount
+  price     Decimal @db.Decimal(10, 2)
+  codAmount Decimal @db.Decimal(10, 2)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   // History
   history OrderHistory[]
+  uploadedFiles UploadedFile[]
+  notifications Notification[]
 
   @@index([tenantId])
   @@index([merchantId])
@@ -152,7 +164,7 @@ model OrderHistory {
   changedById String
   changedBy   User   @relation("ActionPerformer", fields: [changedById], references: [id])
   
-  location    String? // Lat/Lng or City
+  location    String?
   timestamp   DateTime @default(now())
   
   // Multi-tenancy
@@ -162,4 +174,53 @@ model OrderHistory {
   @@index([orderId])
   @@index([tenantId])
   @@map("order_histories")
+}
+
+model UploadedFile {
+  id            String   @id @default(uuid())
+  fileName      String
+  fileType      String
+  fileSize      Int
+  fileCategory  String
+  filePath      String   @unique
+  
+  // Multi-tenancy
+  tenantId      String
+  tenant        Tenant   @relation(fields: [tenantId], references: [id])
+  
+  // Optional: Link to order
+  orderId       String?
+  order         Order?   @relation(fields: [orderId], references: [id])
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  @@index([tenantId])
+  @@index([orderId])
+  @@map("uploaded_files")
+}
+
+model Notification {
+  id          String            @id @default(uuid())
+  type        NotificationType
+  orderId     String
+  order       Order             @relation(fields: [orderId], references: [id])
+  status      OrderStatus?
+  message     String
+  isRead      Boolean           @default(false)
+  
+  // Recipient
+  recipientId String?
+  recipient   User?             @relation("NotificationRecipient", fields: [recipientId], references: [id])
+  
+  // Multi-tenancy
+  tenantId    String
+  tenant      Tenant            @relation(fields: [tenantId], references: [id])
+  
+  createdAt   DateTime          @default(now())
+  
+  @@index([tenantId])
+  @@index([orderId])
+  @@index([recipientId])
+  @@map("notifications")
 }
