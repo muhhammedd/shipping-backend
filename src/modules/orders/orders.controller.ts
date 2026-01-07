@@ -1,11 +1,14 @@
-import { Body, Controller, Get, Param, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Query } from '@nestjs/common';
 import { OrdersService } from './orders.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
+import { FilterOrderDto } from './dto/filter-order.dto';
+import { AssignOrderDto } from './dto/assign-order.dto';
 import { ActiveUser } from '../../common/decorators/active-user.decorator';
 import type { ActiveUserData } from '../../common/interfaces/active-user-data.interface';
 import { Roles } from '../iam/authorization/decorators/roles.decorator';
 import { UserRole } from '@prisma/client';
+import { ApiQuery } from '@nestjs/swagger';
 
 @Controller('orders')
 export class OrdersController {
@@ -21,8 +24,16 @@ export class OrdersController {
   }
 
   @Get()
-  findAll(@ActiveUser() user: ActiveUserData) {
-    return this.ordersService.findAll(user);
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiQuery({ name: 'status', required: false, type: String })
+  @ApiQuery({ name: 'startDate', required: false, type: String })
+  @ApiQuery({ name: 'endDate', required: false, type: String })
+  findAll(
+    @Query() filterDto: FilterOrderDto,
+    @ActiveUser() user: ActiveUserData,
+  ) {
+    return this.ordersService.findAll(user, filterDto);
   }
 
   @Get(':id')
@@ -38,5 +49,15 @@ export class OrdersController {
     @ActiveUser() user: ActiveUserData,
   ) {
     return this.ordersService.updateStatus(id, updateOrderStatusDto, user);
+  }
+
+  @Roles(UserRole.ADMIN)
+  @Patch(':id/assign')
+  assignOrder(
+    @Param('id') id: string,
+    @Body() assignOrderDto: AssignOrderDto,
+    @ActiveUser() user: ActiveUserData,
+  ) {
+    return this.ordersService.assignOrder(id, assignOrderDto, user);
   }
 }

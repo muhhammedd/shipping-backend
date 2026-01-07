@@ -1,7 +1,9 @@
-import { Controller, Get, Param } from '@nestjs/common';
+import { Controller, Get, Param, Query } from '@nestjs/common';
 import { TenantsService } from './tenants.service';
 import { Roles } from '../iam/authorization/decorators/roles.decorator';
 import { UserRole } from '@prisma/client';
+import { FilterTenantDto } from './dto/filter-tenant.dto';
+import { ApiQuery } from '@nestjs/swagger';
 
 @Controller('tenants')
 export class TenantsController {
@@ -9,8 +11,11 @@ export class TenantsController {
 
   @Roles(UserRole.SUPER_ADMIN)
   @Get()
-  findAll() {
-    return this.tenantsService.findAll();
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiQuery({ name: 'status', required: false, type: String })
+  findAll(@Query() filterDto: FilterTenantDto) {
+    return this.tenantsService.findAll(filterDto);
   }
 
   @Roles(UserRole.SUPER_ADMIN)
