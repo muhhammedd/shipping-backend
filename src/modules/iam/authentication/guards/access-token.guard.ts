@@ -8,6 +8,7 @@ import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
 import { Request } from 'express';
 import { IS_PUBLIC_KEY } from '../../../../common/decorators/public.decorator';
+import { ActiveUserData } from '../../../../common/interfaces/active-user-data.interface';
 
 @Injectable()
 export class AccessTokenGuard implements CanActivate {
@@ -25,14 +26,14 @@ export class AccessTokenGuard implements CanActivate {
       return true;
     }
 
-    const request = context.switchToHttp().getRequest();
+    const request = context.switchToHttp().getRequest<Request>();
     const token = this.extractTokenFromHeader(request);
     if (!token) {
       throw new UnauthorizedException();
     }
     try {
-      const payload = await this.jwtService.verifyAsync(token);
-      request['user'] = payload;
+      const payload = await this.jwtService.verifyAsync<ActiveUserData>(token);
+      request.user = payload;
     } catch {
       throw new UnauthorizedException();
     }

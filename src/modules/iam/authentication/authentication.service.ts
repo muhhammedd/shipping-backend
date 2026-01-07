@@ -8,7 +8,7 @@ import { PrismaService } from '../../core/prisma.service';
 import { HashingService } from '../hashing/hashing.service';
 import { SignInDto } from './dto/sign-in.dto';
 import { SignUpDto } from './dto/sign-up.dto';
-import { UserRole } from '@prisma/client';
+import { Prisma, UserRole } from '@prisma/client';
 
 @Injectable()
 export class AuthenticationService {
@@ -46,7 +46,10 @@ export class AuthenticationService {
         };
       });
     } catch (error) {
-      if (error.code === 'P2002') {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
         throw new ConflictException('Email or Company Slug already exists');
       }
       throw error;
