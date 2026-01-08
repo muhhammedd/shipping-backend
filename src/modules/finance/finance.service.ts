@@ -12,8 +12,7 @@ export class FinanceService {
    * Formula: Total COD Collected - Shipping Fees = Merchant Payout
    */
   async calculateMerchantBalance(merchantId: string, tenantId: string) {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
-    const orders = await (this.prisma as any).order.findMany({
+    const orders = await this.prisma.order.findMany({
       where: {
         merchantId,
         tenantId,
@@ -29,22 +28,18 @@ export class FinanceService {
     let totalFees = new Decimal(0);
 
     for (const order of orders) {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-      totalCOD = totalCOD.plus(new Decimal(order.codAmount));
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-      totalFees = totalFees.plus(new Decimal(order.price));
+      totalCOD = totalCOD.plus(order.codAmount);
+      totalFees = totalFees.plus(order.price);
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
     return totalCOD.minus(totalFees);
   }
 
   /**
    * Update merchant balance after order delivery
    */
-  async updateMerchantBalanceOnDelivery(orderId: string, tenantId: string) {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
-    const order = await (this.prisma as any).order.findUnique({
+  async updateMerchantBalanceOnDelivery(orderId: string, _tenantId: string) {
+    const order = await this.prisma.order.findUnique({
       where: { id: orderId },
       select: {
         merchantId: true,
@@ -58,19 +53,13 @@ export class FinanceService {
     }
 
     // Calculate the balance change for this order
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-    const balanceChange = new Decimal(order.codAmount).minus(
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-      new Decimal(order.price),
-    );
+    const balanceChange = order.codAmount.minus(order.price);
 
     // Update merchant profile balance
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
-    return await (this.prisma as any).merchantProfile.update({
+    return await this.prisma.merchantProfile.update({
       where: { id: order.merchantId },
       data: {
         balance: {
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
           increment: balanceChange,
         },
       },
@@ -86,12 +75,10 @@ export class FinanceService {
     }
 
     // Update courier wallet with COD amount
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
-    return await (this.prisma as any).courierProfile.update({
+    return await this.prisma.courierProfile.update({
       where: { id: courierId },
       data: {
         wallet: {
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
           increment: new Decimal(codAmount),
         },
       },
@@ -102,13 +89,11 @@ export class FinanceService {
    * Get merchant balance
    */
   async getMerchantBalance(merchantId: string) {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
-    const merchant = await (this.prisma as any).merchantProfile.findUnique({
+    const merchant = await this.prisma.merchantProfile.findUnique({
       where: { id: merchantId },
       select: { balance: true },
     });
 
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-member-access
     return merchant?.balance || new Decimal(0);
   }
 
@@ -116,13 +101,11 @@ export class FinanceService {
    * Get courier wallet
    */
   async getCourierWallet(courierId: string) {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
-    const courier = await (this.prisma as any).courierProfile.findUnique({
+    const courier = await this.prisma.courierProfile.findUnique({
       where: { id: courierId },
       select: { wallet: true },
     });
 
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-member-access
     return courier?.wallet || new Decimal(0);
   }
 
@@ -130,23 +113,23 @@ export class FinanceService {
    * Deduct courier wallet (when payout is made)
    */
   async deductCourierWallet(courierId: string, amount: number) {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
-    const courier = await (this.prisma as any).courierProfile.findUnique({
+    const courier = await this.prisma.courierProfile.findUnique({
       where: { id: courierId },
       select: { wallet: true },
     });
 
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-    if (courier.wallet < amount) {
+    if (!courier) {
+      throw new BadRequestException('Courier not found');
+    }
+
+    if (courier.wallet.lessThan(new Decimal(amount))) {
       throw new BadRequestException('Insufficient wallet balance');
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
-    return await (this.prisma as any).courierProfile.update({
+    return await this.prisma.courierProfile.update({
       where: { id: courierId },
       data: {
         wallet: {
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
           decrement: new Decimal(amount),
         },
       },

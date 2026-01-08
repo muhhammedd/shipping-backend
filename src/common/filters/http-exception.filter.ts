@@ -3,7 +3,6 @@ import {
   Catch,
   ArgumentsHost,
   HttpException,
-  HttpStatus,
   Logger,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
@@ -16,7 +15,7 @@ interface ErrorResponse {
   timestamp: string;
   path: string;
   method: string;
-  details?: any;
+  details?: unknown;
 }
 
 @Catch(HttpException)
@@ -28,23 +27,25 @@ export class HttpExceptionFilter implements ExceptionFilter {
     const response = ctx.getResponse<Response>();
     const request = ctx.getRequest<Request>();
     const status = exception.getStatus();
-    const exceptionResponse = exception.getResponse();
+    const exceptionResponse = exception.getResponse() as Record<
+      string,
+      unknown
+    >;
 
     let message = exception.message;
     let error = 'Internal Server Error';
-    let details: any = undefined;
+    let details: unknown = undefined;
 
-    if (typeof exceptionResponse === 'object') {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-      message = exceptionResponse.message || message;
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-      error = exceptionResponse.error || error;
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-      if (exceptionResponse.message && Array.isArray(exceptionResponse.message)) {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+    if (typeof exceptionResponse === 'object' && exceptionResponse !== null) {
+      message = (exceptionResponse.message as string) || message;
+      error = (exceptionResponse.error as string) || error;
+
+      if (
+        exceptionResponse.message &&
+        Array.isArray(exceptionResponse.message)
+      ) {
         details = exceptionResponse.message;
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-        message = exceptionResponse.error || 'Validation failed';
+        message = (exceptionResponse.error as string) || 'Validation failed';
       }
     }
 
@@ -61,10 +62,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
 
     // Log errors
     if (status >= 500) {
-      this.logger.error(
-        `[${request.method}] ${request.url}`,
-        exception.stack,
-      );
+      this.logger.error(`[${request.method}] ${request.url}`, exception.stack);
     } else if (status >= 400) {
       this.logger.warn(
         `[${request.method}] ${request.url} - ${status} ${message}`,

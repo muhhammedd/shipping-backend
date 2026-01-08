@@ -53,8 +53,7 @@ export class FilesService {
       fs.writeFileSync(filePath, fileBuffer);
 
       // Save file metadata to database
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
-      const savedFile = await (this.prisma as any).uploadedFile.create({
+      const savedFile = await this.prisma.uploadedFile.create({
         data: {
           fileName: uploadFileDto.fileName,
           fileType: uploadFileDto.fileType,
@@ -66,7 +65,6 @@ export class FilesService {
         },
       });
 
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-return
       return {
         id: savedFile.id,
         fileName: savedFile.fileName,
@@ -84,8 +82,7 @@ export class FilesService {
   }
 
   async getFile(fileId: string, tenantId: string) {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
-    const file = await (this.prisma as any).uploadedFile.findUnique({
+    const file = await this.prisma.uploadedFile.findUnique({
       where: { id: fileId },
     });
 
@@ -94,19 +91,15 @@ export class FilesService {
     }
 
     // Verify tenant ownership
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
     if (file.tenantId !== tenantId) {
       throw new BadRequestException('Unauthorized access to file');
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
     return file;
   }
 
   async downloadFile(fileId: string, tenantId: string) {
     const file = await this.getFile(fileId, tenantId);
-
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
     const filePath = path.join(this.uploadDir, file.filePath);
 
     if (!fs.existsSync(filePath)) {
@@ -115,9 +108,7 @@ export class FilesService {
 
     return {
       filePath,
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       fileName: file.fileName,
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       fileType: file.fileType,
     };
   }
@@ -127,19 +118,16 @@ export class FilesService {
 
     try {
       // Delete file from disk
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       const filePath = path.join(this.uploadDir, file.filePath);
       if (fs.existsSync(filePath)) {
         fs.unlinkSync(filePath);
       }
 
       // Delete file metadata from database
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
-      const deletedFile = await (this.prisma as any).uploadedFile.delete({
+      const deletedFile = await this.prisma.uploadedFile.delete({
         where: { id: fileId },
       });
 
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-return
       return { message: 'File deleted successfully', fileId: deletedFile.id };
     } catch (error) {
       throw new BadRequestException(
@@ -149,8 +137,7 @@ export class FilesService {
   }
 
   async getFilesByOrder(orderId: string, tenantId: string) {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
-    const files = await (this.prisma as any).uploadedFile.findMany({
+    const files = await this.prisma.uploadedFile.findMany({
       where: {
         orderId,
         tenantId,
@@ -165,8 +152,7 @@ export class FilesService {
       },
     });
 
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
-    return files.map((file: any) => ({
+    return files.map((file) => ({
       ...file,
       fileUrl: `/api/v1/files/${file.id}/download`,
     }));

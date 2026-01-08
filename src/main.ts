@@ -11,15 +11,18 @@ import { AccessTokenGuard } from './modules/iam/authentication/guards/access-tok
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-  
+
   // Enable CORS
   app.enableCors({
-    origin: process.env.CORS_ORIGIN?.split(',') || ['http://localhost:3000', 'http://localhost:3001'],
+    origin: process.env.CORS_ORIGIN?.split(',') || [
+      'http://localhost:3000',
+      'http://localhost:3001',
+    ],
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
   });
-  
+
   app.setGlobalPrefix('api/v1');
   app.useGlobalPipes(
     new ValidationPipe({
@@ -31,7 +34,10 @@ async function bootstrap() {
       },
     }),
   );
-  app.useGlobalInterceptors(new TransformInterceptor(), new TenantInterceptor());
+  app.useGlobalInterceptors(
+    new TransformInterceptor(),
+    new TenantInterceptor(),
+  );
   app.useGlobalFilters(new AllExceptionsFilter());
   app.useGlobalGuards(new AccessTokenGuard(), new RolesGuard());
 
@@ -52,7 +58,9 @@ async function bootstrap() {
   const port = process.env.PORT ?? 3000;
   await app.listen(port);
   console.log(`🚀 Shipex API is running on http://localhost:${port}`);
-  console.log(`📚 Swagger documentation available at http://localhost:${port}/api/docs`);
+  console.log(
+    `📚 Swagger documentation available at http://localhost:${port}/api/docs`,
+  );
 }
 
 bootstrap().catch((error) => {

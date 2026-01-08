@@ -1,16 +1,19 @@
-import { Injectable, NestMiddleware, TooManyRequestsException } from '@nestjs/common';
+import {
+  Injectable,
+  NestMiddleware,
+  HttpException,
+  HttpStatus,
+} from '@nestjs/common';
 import { Request, Response, NextFunction } from 'express';
 
-interface RateLimitStore {
-  [key: string]: {
-    count: number;
-    resetTime: number;
-  };
+interface RateLimitInfo {
+  count: number;
+  resetTime: number;
 }
 
 @Injectable()
 export class RateLimitMiddleware implements NestMiddleware {
-  private store: RateLimitStore = {};
+  private store = new Map<string, RateLimitInfo>();
   private readonly windowMs = 15 * 60 * 1000; // 15 minutes
   private readonly maxRequests = 100; // 100 requests per window
 
@@ -24,32 +27,36 @@ export class RateLimitMiddleware implements NestMiddleware {
     const key = req.ip || 'unknown';
     const now = Date.now();
 
+    let record = this.store.get(key);
+
     // Initialize or reset the counter
-    if (!this.store[key] || now > this.store[key].resetTime) {
-      this.store[key] = {
+    if (!record || now > record.resetTime) {
+      record = {
         count: 0,
         resetTime: now + this.windowMs,
       };
+      this.store.set(key, record);
     }
 
     // Increment the counter
-    this.store[key].count++;
+    record.count++;
 
     // Set rate limit headers
-    res.setHeader('X-RateLimit-Limit', this.maxRequests);
+    res.setHeader('X-RateLimit-Limit', this.maxRequests.toString());
     res.setHeader(
       'X-RateLimit-Remaining',
-      Math.max(0, this.maxRequests - this.store[key].count),
+      Math.max(0, this.maxRequests - record.count).toString(),
     );
     res.setHeader(
       'X-RateLimit-Reset',
-      new Date(this.store[key].resetTime).toISOString(),
+      new Date(record.resetTime).toISOString(),
     );
 
     // Check if limit exceeded
-    if (this.store[key].count > this.maxRequests) {
-      throw new TooManyRequestsException(
+    if (record.count > this.maxRequests) {
+      throw new HttpException(
         'Too many requests, please try again later.',
+        HttpStatus.TOO_MANY_REQUESTS,
       );
     }
 

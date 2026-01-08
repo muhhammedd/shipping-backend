@@ -19,22 +19,19 @@ export class AllExceptionsFilter implements ExceptionFilter {
         ? exception.getStatus()
         : HttpStatus.INTERNAL_SERVER_ERROR;
 
-    const message =
+    const exceptionResponse =
       exception instanceof HttpException
         ? exception.getResponse()
         : 'Internal server error';
 
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
     const errorMessage =
-      typeof message === 'string'
-        ? message
-        : // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-          (message as any).message || 'Error';
+      typeof exceptionResponse === 'string'
+        ? exceptionResponse
+        : (exceptionResponse as Record<string, unknown>).message || 'Error';
 
     response.status(status).json({
       success: false,
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-      message: errorMessage,
+      message: errorMessage as string,
       statusCode: status,
       timestamp: new Date().toISOString(),
       path: request.url,

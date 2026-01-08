@@ -9,12 +9,15 @@ import {
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { NotificationsService } from './notifications.service';
-import { Logger, UseGuards } from '@nestjs/common';
+import { Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 
 @WebSocketGateway({
   cors: {
-    origin: process.env.CORS_ORIGIN?.split(',') || ['http://localhost:3000', 'http://localhost:3001'],
+    origin: process.env.CORS_ORIGIN?.split(',') || [
+      'http://localhost:3000',
+      'http://localhost:3001',
+    ],
     credentials: true,
   },
 })
@@ -34,7 +37,8 @@ export class NotificationsGateway
 
   async handleConnection(client: Socket) {
     try {
-      const token = client.handshake.auth.token;
+      const auth = client.handshake.auth as { token?: string };
+      const token = auth.token;
       if (!token) {
         this.logger.warn('Connection attempt without token');
         client.disconnect();
@@ -42,12 +46,9 @@ export class NotificationsGateway
       }
 
       // Verify JWT token
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
       const decoded = await this.jwtService.verifyAsync(token);
 
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
       const userId = decoded.sub;
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
       const tenantId = decoded.tenantId;
 
       // Store user connection
@@ -55,11 +56,10 @@ export class NotificationsGateway
       if (!this.userSockets.has(userKey)) {
         this.userSockets.set(userKey, new Set());
       }
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
-      this.userSockets.get(userKey).add(client.id);
+      this.userSockets.get(userKey)?.add(client.id);
 
       // Join user to their personal room
-      client.join(userKey);
+      await client.join(userKey);
 
       this.logger.log(
         `Client ${client.id} connected for user ${userId} in tenant ${tenantId}`,
@@ -91,24 +91,26 @@ export class NotificationsGateway
   }
 
   @SubscribeMessage('subscribe_to_order')
-  handleOrderSubscription(
+  async handleOrderSubscription(
     @ConnectedSocket() client: Socket,
     @MessageBody() data: { orderId: string },
   ) {
     const orderRoom = `order:${data.orderId}`;
-    client.join(orderRoom);
+    await client.join(orderRoom);
     this.logger.log(`Client ${client.id} subscribed to order ${data.orderId}`);
     return { status: 'subscribed', orderId: data.orderId };
   }
 
   @SubscribeMessage('unsubscribe_from_order')
-  handleOrderUnsubscription(
+  async handleOrderUnsubscription(
     @ConnectedSocket() client: Socket,
     @MessageBody() data: { orderId: string },
   ) {
     const orderRoom = `order:${data.orderId}`;
-    client.leave(orderRoom);
-    this.logger.log(`Client ${client.id} unsubscribed from order ${data.orderId}`);
+    await client.leave(orderRoom);
+    this.logger.log(
+      `Client ${client.id} unsubscribed from order ${data.orderId}`,
+    );
     return { status: 'unsubscribed', orderId: data.orderId };
   }
 
@@ -118,7 +120,9 @@ export class NotificationsGateway
   sendNotificationToUser(userId: string, tenantId: string, notification: any) {
     const userKey = `${tenantId}:${userId}`;
     this.server.to(userKey).emit('notification', notification);
-    this.logger.log(`Notification sent to user ${userId} in tenant ${tenantId}`);
+    this.logger.log(
+      `Notification sent to user ${userId} in tenant ${tenantId}`,
+    );
   }
 
   /**
@@ -140,7 +144,6 @@ export class NotificationsGateway
     message: string,
   ) {
     const orderRoom = `order:${orderId}`;
-    const tenantRoom = `tenant:${tenantId}`;
 
     this.server.to(orderRoom).emit('order_status_update', {
       orderId,

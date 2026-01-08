@@ -4,12 +4,16 @@ import { PrismaService } from '../core/prisma.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { AssignOrderDto } from './dto/assign-order.dto';
-import { NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
+import {
+  NotFoundException,
+  BadRequestException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { OrderStatus, UserRole } from '@prisma/client';
+import { Decimal } from '@prisma/client/runtime/library';
 
 describe('OrdersService', () => {
   let service: OrdersService;
-  let prismaService: PrismaService;
 
   const mockPrismaService = {
     order: {
@@ -31,7 +35,9 @@ describe('OrdersService', () => {
     orderHistory: {
       create: jest.fn(),
     },
-    $transaction: jest.fn((callback) => callback(mockPrismaService)),
+    $transaction: jest.fn((callback: (tx: any) => Promise<any>) =>
+      callback(mockPrismaService),
+    ),
   };
 
   beforeEach(async () => {
@@ -46,7 +52,6 @@ describe('OrdersService', () => {
     }).compile();
 
     service = module.get<OrdersService>(OrdersService);
-    prismaService = module.get<PrismaService>(PrismaService);
   });
 
   afterEach(() => {
@@ -72,8 +77,12 @@ describe('OrdersService', () => {
         ...createOrderDto,
       };
 
-      mockPrismaService.merchantProfile.findUnique.mockResolvedValue(mockMerchant);
-      mockPrismaService.order.create.mockResolvedValue(mockOrder);
+      (
+        mockPrismaService.merchantProfile.findUnique as jest.Mock
+      ).mockResolvedValue(mockMerchant);
+      (mockPrismaService.order.create as jest.Mock).mockResolvedValue(
+        mockOrder,
+      );
 
       const result = await service.create(createOrderDto, {
         sub: 'user-123',
@@ -83,9 +92,11 @@ describe('OrdersService', () => {
       });
 
       expect(result).toEqual(mockOrder);
-      expect(mockPrismaService.merchantProfile.findUnique).toHaveBeenCalledWith({
-        where: { userId: 'user-123' },
-      });
+      expect(mockPrismaService.merchantProfile.findUnique).toHaveBeenCalledWith(
+        {
+          where: { userId: 'user-123' },
+        },
+      );
     });
 
     it('should throw NotFoundException if merchant profile not found', async () => {
@@ -98,7 +109,9 @@ describe('OrdersService', () => {
         codAmount: 100,
       };
 
-      mockPrismaService.merchantProfile.findUnique.mockResolvedValue(null);
+      (
+        mockPrismaService.merchantProfile.findUnique as jest.Mock
+      ).mockResolvedValue(null);
 
       await expect(
         service.create(createOrderDto, {
@@ -121,7 +134,9 @@ describe('OrdersService', () => {
       };
 
       const mockMerchant = { id: 'merchant-123' };
-      mockPrismaService.merchantProfile.findUnique.mockResolvedValue(mockMerchant);
+      (
+        mockPrismaService.merchantProfile.findUnique as jest.Mock
+      ).mockResolvedValue(mockMerchant);
 
       await expect(
         service.create(createOrderDto, {
@@ -141,8 +156,10 @@ describe('OrdersService', () => {
         { id: 'order-2', status: OrderStatus.DELIVERED },
       ];
 
-      mockPrismaService.order.count.mockResolvedValue(2);
-      mockPrismaService.order.findMany.mockResolvedValue(mockOrders);
+      (mockPrismaService.order.count as jest.Mock).mockResolvedValue(2);
+      (mockPrismaService.order.findMany as jest.Mock).mockResolvedValue(
+        mockOrders,
+      );
 
       const result = await service.findAll(
         {
@@ -162,8 +179,10 @@ describe('OrdersService', () => {
     it('should filter orders by status', async () => {
       const mockOrders = [{ id: 'order-1', status: OrderStatus.DELIVERED }];
 
-      mockPrismaService.order.count.mockResolvedValue(1);
-      mockPrismaService.order.findMany.mockResolvedValue(mockOrders);
+      (mockPrismaService.order.count as jest.Mock).mockResolvedValue(1);
+      (mockPrismaService.order.findMany as jest.Mock).mockResolvedValue(
+        mockOrders,
+      );
 
       const result = await service.findAll(
         {
@@ -196,9 +215,15 @@ describe('OrdersService', () => {
       const mockCourier = { id: 'courier-123', tenantId: 'tenant-123' };
       const mockUpdatedOrder = { ...mockOrder, status: OrderStatus.ASSIGNED };
 
-      mockPrismaService.order.findUnique.mockResolvedValue(mockOrder);
-      mockPrismaService.courierProfile.findUnique.mockResolvedValue(mockCourier);
-      mockPrismaService.order.update.mockResolvedValue(mockUpdatedOrder);
+      (mockPrismaService.order.findUnique as jest.Mock).mockResolvedValue(
+        mockOrder,
+      );
+      (
+        mockPrismaService.courierProfile.findUnique as jest.Mock
+      ).mockResolvedValue(mockCourier);
+      (mockPrismaService.order.update as jest.Mock).mockResolvedValue(
+        mockUpdatedOrder,
+      );
 
       const result = await service.assignOrder('order-123', assignOrderDto, {
         sub: 'admin-user',
@@ -232,8 +257,12 @@ describe('OrdersService', () => {
 
       const mockOrder = { id: 'order-123', status: OrderStatus.CREATED };
 
-      mockPrismaService.order.findUnique.mockResolvedValue(mockOrder);
-      mockPrismaService.courierProfile.findUnique.mockResolvedValue(null);
+      (mockPrismaService.order.findUnique as jest.Mock).mockResolvedValue(
+        mockOrder,
+      );
+      (
+        mockPrismaService.courierProfile.findUnique as jest.Mock
+      ).mockResolvedValue(null);
 
       await expect(
         service.assignOrder('order-123', assignOrderDto, {
@@ -253,8 +282,12 @@ describe('OrdersService', () => {
       const mockOrder = { id: 'order-123', status: OrderStatus.CREATED };
       const mockCourier = { id: 'courier-123', tenantId: 'different-tenant' };
 
-      mockPrismaService.order.findUnique.mockResolvedValue(mockOrder);
-      mockPrismaService.courierProfile.findUnique.mockResolvedValue(mockCourier);
+      (mockPrismaService.order.findUnique as jest.Mock).mockResolvedValue(
+        mockOrder,
+      );
+      (
+        mockPrismaService.courierProfile.findUnique as jest.Mock
+      ).mockResolvedValue(mockCourier);
 
       await expect(
         service.assignOrder('order-123', assignOrderDto, {
@@ -276,15 +309,23 @@ describe('OrdersService', () => {
       const mockOrder = { id: 'order-123', status: OrderStatus.ASSIGNED };
       const mockUpdatedOrder = { ...mockOrder, status: OrderStatus.PICKED_UP };
 
-      mockPrismaService.order.findUnique.mockResolvedValue(mockOrder);
-      mockPrismaService.order.update.mockResolvedValue(mockUpdatedOrder);
+      (mockPrismaService.order.findUnique as jest.Mock).mockResolvedValue(
+        mockOrder,
+      );
+      (mockPrismaService.order.update as jest.Mock).mockResolvedValue(
+        mockUpdatedOrder,
+      );
 
-      const result = await service.updateStatus('order-123', updateOrderStatusDto, {
-        sub: 'user-123',
-        email: 'user@example.com',
-        role: UserRole.COURIER,
-        tenantId: 'tenant-123',
-      });
+      const result = await service.updateStatus(
+        'order-123',
+        updateOrderStatusDto,
+        {
+          sub: 'user-123',
+          email: 'user@example.com',
+          role: UserRole.COURIER,
+          tenantId: 'tenant-123',
+        },
+      );
 
       expect(result.status).toBe(OrderStatus.PICKED_UP);
     });
@@ -299,12 +340,14 @@ describe('OrdersService', () => {
         status: OrderStatus.IN_TRANSIT,
         merchantId: 'merchant-123',
         courierId: 'courier-123',
-        codAmount: 100,
-        price: 10,
+        codAmount: new Decimal(100),
+        price: new Decimal(10),
       };
 
-      mockPrismaService.order.findUnique.mockResolvedValue(mockOrder);
-      mockPrismaService.order.update.mockResolvedValue({
+      (mockPrismaService.order.findUnique as jest.Mock).mockResolvedValue(
+        mockOrder,
+      );
+      (mockPrismaService.order.update as jest.Mock).mockResolvedValue({
         ...mockOrder,
         status: OrderStatus.DELIVERED,
       });
@@ -321,7 +364,7 @@ describe('OrdersService', () => {
           where: { id: 'merchant-123' },
           data: expect.objectContaining({
             balance: expect.objectContaining({
-              increment: 90,
+              increment: new Decimal(90),
             }),
           }),
         }),

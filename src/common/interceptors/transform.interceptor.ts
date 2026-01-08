@@ -11,7 +11,7 @@ export interface Response<T> {
   success: boolean;
   message: string;
   data: T;
-  meta?: any;
+  meta?: unknown;
 }
 
 @Injectable()
@@ -24,14 +24,18 @@ export class TransformInterceptor<T> implements NestInterceptor<
     next: CallHandler,
   ): Observable<Response<T>> {
     return next.handle().pipe(
-      map((data: any) => ({
-        success: true,
-        message: 'Operation successful',
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
-        data: data?.data || data,
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
-        meta: data?.meta || undefined,
-      })),
+      map((data: unknown) => {
+        const isObject = data && typeof data === 'object';
+        const hasData = isObject && 'data' in (data as Record<string, unknown>);
+        const hasMeta = isObject && 'meta' in (data as Record<string, unknown>);
+
+        return {
+          success: true,
+          message: 'Operation successful',
+          data: hasData ? (data as { data: T }).data : (data as T),
+          meta: hasMeta ? (data as { meta: unknown }).meta : undefined,
+        };
+      }),
     );
   }
 }

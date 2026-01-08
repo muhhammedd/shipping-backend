@@ -24,7 +24,7 @@ export class FilesController {
     @Body() uploadFileDto: UploadFileDto,
     @ActiveUser() user: ActiveUserData,
   ) {
-    return this.filesService.uploadFile(uploadFileDto, user.tenantId);
+    return await this.filesService.uploadFile(uploadFileDto, user.tenantId);
   }
 
   @Get(':id')
@@ -32,7 +32,7 @@ export class FilesController {
     @Param('id') fileId: string,
     @ActiveUser() user: ActiveUserData,
   ) {
-    return this.filesService.getFile(fileId, user.tenantId);
+    return await this.filesService.getFile(fileId, user.tenantId);
   }
 
   @Get(':id/download')
@@ -41,7 +41,10 @@ export class FilesController {
     @ActiveUser() user: ActiveUserData,
     @Res() res: Response,
   ) {
-    const fileData = await this.filesService.downloadFile(fileId, user.tenantId);
+    const fileData = await this.filesService.downloadFile(
+      fileId,
+      user.tenantId,
+    );
 
     if (!fs.existsSync(fileData.filePath)) {
       throw new BadRequestException('File not found');
@@ -55,7 +58,7 @@ export class FilesController {
     @Param('id') fileId: string,
     @ActiveUser() user: ActiveUserData,
   ) {
-    return this.filesService.deleteFile(fileId, user.tenantId);
+    return await this.filesService.deleteFile(fileId, user.tenantId);
   }
 
   @Get('order/:orderId/files')
@@ -63,6 +66,6 @@ export class FilesController {
     @Param('orderId') orderId: string,
     @ActiveUser() user: ActiveUserData,
   ) {
-    return this.filesService.getFilesByOrder(orderId, user.tenantId);
+    return await this.filesService.getFilesByOrder(orderId, user.tenantId);
   }
 }

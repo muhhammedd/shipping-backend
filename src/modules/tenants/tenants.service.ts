@@ -1,13 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../core/prisma.service';
 import { FilterTenantDto } from './dto/filter-tenant.dto';
+import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class TenantsService {
   constructor(private readonly prisma: PrismaService) {}
 
   async findAll(filterDto: FilterTenantDto) {
-    const where: any = {};
+    const where: Prisma.TenantWhereInput = {};
 
     // Filter by status if provided
     if (filterDto.status) {
@@ -15,12 +16,10 @@ export class TenantsService {
     }
 
     // Get total count for pagination metadata
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
-    const total = await (this.prisma as any).tenant.count({ where });
+    const total = await this.prisma.tenant.count({ where });
 
     // Fetch paginated results
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
-    const data = await (this.prisma as any).tenant.findMany({
+    const data = await this.prisma.tenant.findMany({
       where,
       skip: filterDto.skip,
       take: filterDto.limit,
@@ -39,8 +38,7 @@ export class TenantsService {
   }
 
   async findOne(id: string) {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
-    const tenant = await (this.prisma as any).tenant.findUnique({
+    const tenant = await this.prisma.tenant.findUnique({
       where: { id },
       include: {
         users: {
@@ -54,7 +52,6 @@ export class TenantsService {
       },
     });
 
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
     return tenant;
   }
 }

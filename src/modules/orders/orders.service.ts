@@ -10,7 +10,7 @@ import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { FilterOrderDto } from './dto/filter-order.dto';
 import { AssignOrderDto } from './dto/assign-order.dto';
 import { ActiveUserData } from '../../common/interfaces/active-user-data.interface';
-import { OrderStatus, UserRole } from '@prisma/client';
+import { OrderStatus, UserRole, Prisma } from '@prisma/client';
 
 @Injectable()
 export class OrdersService {
@@ -21,8 +21,7 @@ export class OrdersService {
     const trackingNumber = `SHP-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 
     // Find the merchant profile for the user
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
-    const merchant = await (this.prisma as any).merchantProfile.findUnique({
+    const merchant = await this.prisma.merchantProfile.findUnique({
       where: { userId: user.sub },
     });
 
@@ -37,30 +36,26 @@ export class OrdersService {
       );
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
-    return await (this.prisma as any).order.create({
+    return await this.prisma.order.create({
       data: {
         ...createOrderDto,
         trackingNumber,
         status: OrderStatus.CREATED,
         tenantId: user.tenantId,
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
         merchantId: merchant.id,
       },
     });
   }
 
   async findAll(user: ActiveUserData, filterDto: FilterOrderDto) {
-    const where: any = { tenantId: user.tenantId };
+    const where: Prisma.OrderWhereInput = { tenantId: user.tenantId };
 
     // Merchants can only see their own orders
     if (user.role === UserRole.MERCHANT) {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
-      const merchant = await (this.prisma as any).merchantProfile.findUnique({
+      const merchant = await this.prisma.merchantProfile.findUnique({
         where: { userId: user.sub },
       });
       if (merchant) {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
         where.merchantId = merchant.id;
       }
     }
@@ -82,12 +77,10 @@ export class OrdersService {
     }
 
     // Get total count for pagination metadata
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
-    const total = await (this.prisma as any).order.count({ where });
+    const total = await this.prisma.order.count({ where });
 
     // Fetch paginated results
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
-    const data = await (this.prisma as any).order.findMany({
+    const data = await this.prisma.order.findMany({
       where,
       include: {
         merchant: {
@@ -120,8 +113,7 @@ export class OrdersService {
   }
 
   async findOne(id: string, user: ActiveUserData) {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
-    const order = await (this.prisma as any).order.findFirst({
+    const order = await this.prisma.order.findFirst({
       where: { id, tenantId: user.tenantId },
       include: {
         merchant: {
@@ -148,7 +140,6 @@ export class OrdersService {
       throw new NotFoundException(`Order with ID ${id} not found`);
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
     return order;
   }
 
@@ -157,8 +148,7 @@ export class OrdersService {
     updateOrderStatusDto: UpdateOrderStatusDto,
     user: ActiveUserData,
   ) {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
-    const order = await (this.prisma as any).order.findUnique({
+    const order = await this.prisma.order.findUnique({
       where: { id, tenantId: user.tenantId },
     });
 
@@ -166,21 +156,17 @@ export class OrdersService {
       throw new NotFoundException(`Order with ID ${id} not found`);
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
-    return await (this.prisma as any).$transaction(async (tx: any) => {
+    return await this.prisma.$transaction(async (tx) => {
       // 1. Update Order Status
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
       const updatedOrder = await tx.order.update({
         where: { id },
         data: { status: updateOrderStatusDto.status },
       });
 
       // 2. Record in History
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
       await tx.orderHistory.create({
         data: {
           orderId: id,
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
           statusFrom: order.status,
           statusTo: updateOrderStatusDto.status,
           changedById: user.sub,
@@ -191,30 +177,22 @@ export class OrdersService {
       // 3. Handle financial updates when order is delivered
       if (updateOrderStatusDto.status === OrderStatus.DELIVERED) {
         // Update merchant balance
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
-        const balanceChange = order.codAmount - order.price;
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+        const balanceChange = order.codAmount.minus(order.price);
         await tx.merchantProfile.update({
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
           where: { id: order.merchantId },
           data: {
             balance: {
-              // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
               increment: balanceChange,
             },
           },
         });
 
         // Update courier wallet if assigned
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
         if (order.courierId) {
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
           await tx.courierProfile.update({
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
             where: { id: order.courierId },
             data: {
               wallet: {
-                // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
                 increment: order.codAmount,
               },
             },
@@ -222,7 +200,6 @@ export class OrdersService {
         }
       }
 
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-return
       return updatedOrder;
     });
   }
@@ -237,8 +214,7 @@ export class OrdersService {
       throw new ForbiddenException('Only admins can assign orders');
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
-    const order = await (this.prisma as any).order.findUnique({
+    const order = await this.prisma.order.findUnique({
       where: { id, tenantId: user.tenantId },
     });
 
@@ -247,8 +223,7 @@ export class OrdersService {
     }
 
     // Check if courier belongs to the same tenant
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
-    const courier = await (this.prisma as any).courierProfile.findUnique({
+    const courier = await this.prisma.courierProfile.findUnique({
       where: { id: assignOrderDto.courierId },
     });
 
@@ -257,15 +232,11 @@ export class OrdersService {
     }
 
     if (courier.tenantId !== user.tenantId) {
-      throw new ForbiddenException(
-        'Courier does not belong to your tenant',
-      );
+      throw new ForbiddenException('Courier does not belong to your tenant');
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
-    return await (this.prisma as any).$transaction(async (tx: any) => {
+    return await this.prisma.$transaction(async (tx) => {
       // 1. Update order with courier assignment
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
       const updatedOrder = await tx.order.update({
         where: { id },
         data: {
@@ -275,11 +246,9 @@ export class OrdersService {
       });
 
       // 2. Record in history
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
       await tx.orderHistory.create({
         data: {
           orderId: id,
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
           statusFrom: order.status,
           statusTo: OrderStatus.ASSIGNED,
           changedById: user.sub,
@@ -287,7 +256,6 @@ export class OrdersService {
         },
       });
 
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-return
       return updatedOrder;
     });
   }

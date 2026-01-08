@@ -2,14 +2,21 @@ import { createParamDecorator, ExecutionContext } from '@nestjs/common';
 import { Request } from 'express';
 import { ActiveUserData } from '../interfaces/active-user-data.interface';
 
+interface RequestWithUser extends Request {
+  user?: ActiveUserData;
+}
+
 export const ActiveUser = createParamDecorator(
   (
     field: keyof ActiveUserData | undefined,
     ctx: ExecutionContext,
-  ): ActiveUserData | Partial<ActiveUserData> | undefined => {
-    const request = ctx.switchToHttp().getRequest<Request>();
-    const user: ActiveUserData | undefined = request.user;
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
-    return field ? (user?.[field] as any) : user;
+  ): ActiveUserData | ActiveUserData[keyof ActiveUserData] | undefined => {
+    const request = ctx.switchToHttp().getRequest<RequestWithUser>();
+    const user = request.user;
+
+    if (field && user) {
+      return user[field];
+    }
+    return user;
   },
 );

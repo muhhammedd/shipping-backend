@@ -6,11 +6,16 @@ import {
 } from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { Request } from 'express';
+import { ActiveUserData } from '../interfaces/active-user-data.interface';
+
+interface RequestWithUser extends Request {
+  user?: ActiveUserData;
+}
 
 @Injectable()
 export class TenantInterceptor implements NestInterceptor {
   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
-    const request = context.switchToHttp().getRequest<Request>();
+    const request = context.switchToHttp().getRequest<RequestWithUser>();
     const user = request.user;
 
     if (!user || !user.tenantId) {
@@ -18,8 +23,7 @@ export class TenantInterceptor implements NestInterceptor {
     }
 
     if (request.body && typeof request.body === 'object') {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-      request.body.tenantId = user.tenantId;
+      (request.body as Record<string, unknown>).tenantId = user.tenantId;
     }
 
     return next.handle();

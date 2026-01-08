@@ -7,7 +7,6 @@ interface NotificationPayload {
   orderId: string;
   status: OrderStatus;
   message: string;
-  timestamp: Date;
   recipientId?: string;
   tenantId: string;
 }
@@ -26,8 +25,7 @@ export class NotificationsService {
     if (!this.connectedUsers.has(userKey)) {
       this.connectedUsers.set(userKey, new Set());
     }
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
-    this.connectedUsers.get(userKey).add(socketId);
+    this.connectedUsers.get(userKey)?.add(socketId);
   }
 
   /**
@@ -36,8 +34,7 @@ export class NotificationsService {
   unregisterUserConnection(userId: string, socketId: string, tenantId: string) {
     const userKey = `${tenantId}:${userId}`;
     if (this.connectedUsers.has(userKey)) {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
-      this.connectedUsers.get(userKey).delete(socketId);
+      this.connectedUsers.get(userKey)?.delete(socketId);
     }
   }
 
@@ -53,8 +50,7 @@ export class NotificationsService {
    * Create a notification record in the database
    */
   async createNotification(payload: NotificationPayload) {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
-    return await (this.prisma as any).notification.create({
+    return await this.prisma.notification.create({
       data: {
         type: payload.type,
         orderId: payload.orderId,
@@ -71,8 +67,7 @@ export class NotificationsService {
    * Get unread notifications for a user
    */
   async getUnreadNotifications(userId: string, tenantId: string) {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
-    return await (this.prisma as any).notification.findMany({
+    return await this.prisma.notification.findMany({
       where: {
         recipientId: userId,
         tenantId,
@@ -87,8 +82,7 @@ export class NotificationsService {
    * Mark notification as read
    */
   async markNotificationAsRead(notificationId: string) {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
-    return await (this.prisma as any).notification.update({
+    return await this.prisma.notification.update({
       where: { id: notificationId },
       data: { isRead: true },
     });
@@ -98,8 +92,7 @@ export class NotificationsService {
    * Mark all notifications as read for a user
    */
   async markAllNotificationsAsRead(userId: string, tenantId: string) {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
-    return await (this.prisma as any).notification.updateMany({
+    return await this.prisma.notification.updateMany({
       where: {
         recipientId: userId,
         tenantId,
@@ -117,8 +110,7 @@ export class NotificationsService {
     newStatus: OrderStatus,
     tenantId: string,
   ) {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
-    const order = await (this.prisma as any).order.findUnique({
+    const order = await this.prisma.order.findUnique({
       where: { id: orderId },
       select: {
         trackingNumber: true,
@@ -153,13 +145,11 @@ export class NotificationsService {
 
     // Notify merchant
     if (order.merchant?.userId) {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       await this.createNotification({
         type: 'ORDER_STATUS_CHANGE',
         orderId,
         status: newStatus,
         message: `Order ${order.trackingNumber}: ${statusMessages[newStatus]}`,
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
         recipientId: order.merchant.userId,
         tenantId,
       });
@@ -167,13 +157,11 @@ export class NotificationsService {
 
     // Notify courier if assigned
     if (order.courier?.userId && newStatus !== OrderStatus.CREATED) {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       await this.createNotification({
         type: 'ORDER_STATUS_CHANGE',
         orderId,
         status: newStatus,
         message: `Order ${order.trackingNumber}: ${statusMessages[newStatus]}`,
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
         recipientId: order.courier.userId,
         tenantId,
       });
@@ -188,8 +176,7 @@ export class NotificationsService {
     courierId: string,
     tenantId: string,
   ) {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
-    const courier = await (this.prisma as any).courierProfile.findUnique({
+    const courier = await this.prisma.courierProfile.findUnique({
       where: { id: courierId },
       select: {
         userId: true,
@@ -200,8 +187,7 @@ export class NotificationsService {
       return;
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
-    const order = await (this.prisma as any).order.findUnique({
+    const order = await this.prisma.order.findUnique({
       where: { id: orderId },
       select: {
         trackingNumber: true,
@@ -217,7 +203,6 @@ export class NotificationsService {
       orderId,
       status: OrderStatus.ASSIGNED,
       message: `You have been assigned to deliver order ${order.trackingNumber}`,
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
       recipientId: courier.userId,
       tenantId,
     });

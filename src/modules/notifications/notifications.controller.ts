@@ -9,7 +9,7 @@ export class NotificationsController {
 
   @Get('unread')
   async getUnreadNotifications(@ActiveUser() user: ActiveUserData) {
-    return this.notificationsService.getUnreadNotifications(
+    return await this.notificationsService.getUnreadNotifications(
       user.sub,
       user.tenantId,
     );
@@ -17,12 +17,14 @@ export class NotificationsController {
 
   @Patch(':id/read')
   async markNotificationAsRead(@Param('id') notificationId: string) {
-    return this.notificationsService.markNotificationAsRead(notificationId);
+    return await this.notificationsService.markNotificationAsRead(
+      notificationId,
+    );
   }
 
   @Patch('mark-all-read')
   async markAllNotificationsAsRead(@ActiveUser() user: ActiveUserData) {
-    return this.notificationsService.markAllNotificationsAsRead(
+    return await this.notificationsService.markAllNotificationsAsRead(
       user.sub,
       user.tenantId,
     );
