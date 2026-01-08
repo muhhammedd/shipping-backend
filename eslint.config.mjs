@@ -41,8 +41,18 @@ export default tseslint.config(
     files: [
       '**/*.spec.ts', 
       'src/modules/notifications/notifications.gateway.ts',
+      'src/modules/notifications/notifications.service.ts',
+      'src/modules/notifications/notifications.controller.ts',
       'src/modules/finance/finance.service.ts',
-      'src/common/filters/http-exception.filter.ts'
+      'src/modules/files/files.service.ts',
+      'src/modules/files/files.controller.ts',
+      'src/modules/orders/orders.service.ts',
+      'src/modules/tenants/tenants.service.ts',
+      'src/modules/iam/authentication/authentication.service.ts',
+      'src/common/filters/http-exception.filter.ts',
+      'src/common/filters/all-exceptions.filter.ts',
+      'src/common/interceptors/transform.interceptor.ts',
+      'src/common/decorators/active-user.decorator.ts'
     ],
     rules: {
       '@typescript-eslint/no-unsafe-assignment': 'off',
