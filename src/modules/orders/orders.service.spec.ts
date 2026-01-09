@@ -4,7 +4,11 @@ import { PrismaService } from '../core/prisma.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { AssignOrderDto } from './dto/assign-order.dto';
-import { NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
+import {
+  NotFoundException,
+  BadRequestException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { OrderStatus, UserRole } from '@prisma/client';
 import Decimal from 'decimal.js';
 import { FinanceService } from '../finance/finance.service';
@@ -33,7 +37,9 @@ describe('OrdersService', () => {
     orderHistory: {
       create: jest.fn(),
     },
-    $transaction: jest.fn((callback: (tx: any) => Promise<any>) => callback(mockPrismaService)),
+    $transaction: jest.fn((callback: (tx: any) => Promise<any>) =>
+      callback(mockPrismaService),
+    ),
   };
 
   const mockFinanceService = {
@@ -91,8 +97,12 @@ describe('OrdersService', () => {
         ...createOrderDto,
       };
 
-      (mockPrismaService.merchantProfile.findUnique as jest.Mock).mockResolvedValue(mockMerchant);
-      (mockPrismaService.order.create as jest.Mock).mockResolvedValue(mockOrder);
+      (
+        mockPrismaService.merchantProfile.findUnique as jest.Mock
+      ).mockResolvedValue(mockMerchant);
+      (mockPrismaService.order.create as jest.Mock).mockResolvedValue(
+        mockOrder,
+      );
 
       const result = await service.create(createOrderDto, {
         sub: 'user-123',
@@ -102,9 +112,11 @@ describe('OrdersService', () => {
       });
 
       expect(result).toEqual(mockOrder);
-      expect(mockPrismaService.merchantProfile.findUnique).toHaveBeenCalledWith({
-        where: { userId: 'user-123' },
-      });
+      expect(mockPrismaService.merchantProfile.findUnique).toHaveBeenCalledWith(
+        {
+          where: { userId: 'user-123' },
+        },
+      );
     });
 
     it('should throw NotFoundException if merchant profile not found', async () => {
@@ -117,7 +129,9 @@ describe('OrdersService', () => {
         codAmount: 100,
       };
 
-      (mockPrismaService.merchantProfile.findUnique as jest.Mock).mockResolvedValue(null);
+      (
+        mockPrismaService.merchantProfile.findUnique as jest.Mock
+      ).mockResolvedValue(null);
 
       await expect(
         service.create(createOrderDto, {
@@ -140,7 +154,9 @@ describe('OrdersService', () => {
       };
 
       const mockMerchant = { id: 'merchant-123' };
-      (mockPrismaService.merchantProfile.findUnique as jest.Mock).mockResolvedValue(mockMerchant);
+      (
+        mockPrismaService.merchantProfile.findUnique as jest.Mock
+      ).mockResolvedValue(mockMerchant);
 
       await expect(
         service.create(createOrderDto, {
@@ -161,7 +177,9 @@ describe('OrdersService', () => {
       ];
 
       (mockPrismaService.order.count as jest.Mock).mockResolvedValue(2);
-      (mockPrismaService.order.findMany as jest.Mock).mockResolvedValue(mockOrders);
+      (mockPrismaService.order.findMany as jest.Mock).mockResolvedValue(
+        mockOrders,
+      );
 
       const result = await service.findAll(
         {
@@ -182,7 +200,9 @@ describe('OrdersService', () => {
       const mockOrders = [{ id: 'order-1', status: OrderStatus.DELIVERED }];
 
       (mockPrismaService.order.count as jest.Mock).mockResolvedValue(1);
-      (mockPrismaService.order.findMany as jest.Mock).mockResolvedValue(mockOrders);
+      (mockPrismaService.order.findMany as jest.Mock).mockResolvedValue(
+        mockOrders,
+      );
 
       const result = await service.findAll(
         {
@@ -211,13 +231,23 @@ describe('OrdersService', () => {
         courierId: 'courier-123',
       };
 
-      const mockOrder = { id: 'order-123', status: OrderStatus.CREATED, tenantId: 'tenant-123' };
+      const mockOrder = {
+        id: 'order-123',
+        status: OrderStatus.CREATED,
+        tenantId: 'tenant-123',
+      };
       const mockCourier = { id: 'courier-123', tenantId: 'tenant-123' };
       const mockUpdatedOrder = { ...mockOrder, status: OrderStatus.ASSIGNED };
 
-      (mockPrismaService.order.findUnique as jest.Mock).mockResolvedValue(mockOrder);
-      (mockPrismaService.courierProfile.findUnique as jest.Mock).mockResolvedValue(mockCourier);
-      (mockPrismaService.order.update as jest.Mock).mockResolvedValue(mockUpdatedOrder);
+      (mockPrismaService.order.findUnique as jest.Mock).mockResolvedValue(
+        mockOrder,
+      );
+      (
+        mockPrismaService.courierProfile.findUnique as jest.Mock
+      ).mockResolvedValue(mockCourier);
+      (mockPrismaService.order.update as jest.Mock).mockResolvedValue(
+        mockUpdatedOrder,
+      );
 
       const result = await service.assignOrder('order-123', assignOrderDto, {
         sub: 'admin-user',
@@ -249,10 +279,18 @@ describe('OrdersService', () => {
         courierId: 'courier-123',
       };
 
-      const mockOrder = { id: 'order-123', status: OrderStatus.CREATED, tenantId: 'tenant-123' };
+      const mockOrder = {
+        id: 'order-123',
+        status: OrderStatus.CREATED,
+        tenantId: 'tenant-123',
+      };
 
-      (mockPrismaService.order.findUnique as jest.Mock).mockResolvedValue(mockOrder);
-      (mockPrismaService.courierProfile.findUnique as jest.Mock).mockResolvedValue(null);
+      (mockPrismaService.order.findUnique as jest.Mock).mockResolvedValue(
+        mockOrder,
+      );
+      (
+        mockPrismaService.courierProfile.findUnique as jest.Mock
+      ).mockResolvedValue(null);
 
       await expect(
         service.assignOrder('order-123', assignOrderDto, {
@@ -269,11 +307,19 @@ describe('OrdersService', () => {
         courierId: 'courier-123',
       };
 
-      const mockOrder = { id: 'order-123', status: OrderStatus.CREATED, tenantId: 'tenant-123' };
+      const mockOrder = {
+        id: 'order-123',
+        status: OrderStatus.CREATED,
+        tenantId: 'tenant-123',
+      };
       const mockCourier = { id: 'courier-123', tenantId: 'different-tenant' };
 
-      (mockPrismaService.order.findUnique as jest.Mock).mockResolvedValue(mockOrder);
-      (mockPrismaService.courierProfile.findUnique as jest.Mock).mockResolvedValue(mockCourier);
+      (mockPrismaService.order.findUnique as jest.Mock).mockResolvedValue(
+        mockOrder,
+      );
+      (
+        mockPrismaService.courierProfile.findUnique as jest.Mock
+      ).mockResolvedValue(mockCourier);
 
       await expect(
         service.assignOrder('order-123', assignOrderDto, {
@@ -292,18 +338,30 @@ describe('OrdersService', () => {
         status: OrderStatus.PICKED_UP,
       };
 
-      const mockOrder = { id: 'order-123', status: OrderStatus.ASSIGNED, tenantId: 'tenant-123' };
+      const mockOrder = {
+        id: 'order-123',
+        status: OrderStatus.ASSIGNED,
+        tenantId: 'tenant-123',
+      };
       const mockUpdatedOrder = { ...mockOrder, status: OrderStatus.PICKED_UP };
 
-      (mockPrismaService.order.findUnique as jest.Mock).mockResolvedValue(mockOrder);
-      (mockPrismaService.order.update as jest.Mock).mockResolvedValue(mockUpdatedOrder);
+      (mockPrismaService.order.findUnique as jest.Mock).mockResolvedValue(
+        mockOrder,
+      );
+      (mockPrismaService.order.update as jest.Mock).mockResolvedValue(
+        mockUpdatedOrder,
+      );
 
-      const result = await service.updateStatus('order-123', updateOrderStatusDto, {
-        sub: 'user-123',
-        email: 'user@example.com',
-        role: UserRole.COURIER,
-        tenantId: 'tenant-123',
-      });
+      const result = await service.updateStatus(
+        'order-123',
+        updateOrderStatusDto,
+        {
+          sub: 'user-123',
+          email: 'user@example.com',
+          role: UserRole.COURIER,
+          tenantId: 'tenant-123',
+        },
+      );
 
       expect(result.status).toBe(OrderStatus.PICKED_UP);
     });
@@ -323,7 +381,9 @@ describe('OrdersService', () => {
         tenantId: 'tenant-123',
       };
 
-      (mockPrismaService.order.findUnique as jest.Mock).mockResolvedValue(mockOrder);
+      (mockPrismaService.order.findUnique as jest.Mock).mockResolvedValue(
+        mockOrder,
+      );
       (mockPrismaService.order.update as jest.Mock).mockResolvedValue({
         ...mockOrder,
         status: OrderStatus.DELIVERED,
@@ -336,7 +396,9 @@ describe('OrdersService', () => {
         tenantId: 'tenant-123',
       });
 
-      expect(mockFinanceService.updateMerchantBalanceOnDelivery).toHaveBeenCalled();
+      expect(
+        mockFinanceService.updateMerchantBalanceOnDelivery,
+      ).toHaveBeenCalled();
     });
   });
 });
