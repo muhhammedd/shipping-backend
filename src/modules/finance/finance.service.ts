@@ -1,7 +1,7 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../core/prisma.service';
 import { OrderStatus } from '@prisma/client';
-import { Decimal } from '@prisma/client/runtime';
+import { Decimal } from 'decimal.js';
 
 @Injectable()
 export class FinanceService {
@@ -28,8 +28,8 @@ export class FinanceService {
     let totalFees = new Decimal(0);
 
     for (const order of orders) {
-      totalCOD = totalCOD.plus(order.codAmount);
-      totalFees = totalFees.plus(order.price);
+      totalCOD = totalCOD.plus(order.codAmount.toString());
+      totalFees = totalFees.plus(order.price.toString());
     }
 
     return totalCOD.minus(totalFees);
@@ -122,7 +122,7 @@ export class FinanceService {
       throw new BadRequestException('Courier not found');
     }
 
-    if (courier.wallet.lessThan(new Decimal(amount))) {
+    if (new Decimal(courier.wallet.toString()).lessThan(new Decimal(amount))) {
       throw new BadRequestException('Insufficient wallet balance');
     }
 

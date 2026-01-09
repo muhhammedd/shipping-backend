@@ -45,7 +45,7 @@ async function bootstrap() {
   const jwtService = app.get(JwtService);
   const reflector = app.get(Reflector);
   app.useGlobalGuards(
-    new AccessTokenGuard(jwtService),
+    new AccessTokenGuard(jwtService, reflector),
     new RolesGuard(reflector),
   );
 

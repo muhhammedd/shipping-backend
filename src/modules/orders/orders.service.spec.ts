@@ -10,7 +10,9 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { OrderStatus, UserRole } from '@prisma/client';
-import { Decimal } from '@prisma/client/runtime/library';
+import { Decimal } from 'decimal.js';
+import { FinanceService } from '../finance/finance.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 describe('OrdersService', () => {
   let service: OrdersService;
@@ -40,6 +42,16 @@ describe('OrdersService', () => {
     ),
   };
 
+  const mockFinanceService = {
+    updateMerchantBalanceOnDelivery: jest.fn(),
+    updateCourierWalletOnDelivery: jest.fn(),
+  };
+
+  const mockNotificationsService = {
+    notifyOrderAssignment: jest.fn(),
+    notifyOrderStatusChange: jest.fn(),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -47,6 +59,14 @@ describe('OrdersService', () => {
         {
           provide: PrismaService,
           useValue: mockPrismaService,
+        },
+        {
+          provide: FinanceService,
+          useValue: mockFinanceService,
+        },
+        {
+          provide: NotificationsService,
+          useValue: mockNotificationsService,
         },
       ],
     }).compile();
@@ -168,7 +188,7 @@ describe('OrdersService', () => {
           role: UserRole.ADMIN,
           tenantId: 'tenant-123',
         },
-        { page: 1, limit: 10 },
+        { page: 1, limit: 10, skip: 0 },
       );
 
       expect(result.data).toEqual(mockOrders);
@@ -191,7 +211,7 @@ describe('OrdersService', () => {
           role: UserRole.ADMIN,
           tenantId: 'tenant-123',
         },
-        { page: 1, limit: 10, status: OrderStatus.DELIVERED },
+        { page: 1, limit: 10, skip: 0, status: OrderStatus.DELIVERED },
       );
 
       expect(result.data).toEqual(mockOrders);
@@ -211,7 +231,11 @@ describe('OrdersService', () => {
         courierId: 'courier-123',
       };
 
-      const mockOrder = { id: 'order-123', status: OrderStatus.CREATED };
+      const mockOrder = {
+        id: 'order-123',
+        status: OrderStatus.CREATED,
+        tenantId: 'tenant-123',
+      };
       const mockCourier = { id: 'courier-123', tenantId: 'tenant-123' };
       const mockUpdatedOrder = { ...mockOrder, status: OrderStatus.ASSIGNED };
 
@@ -255,7 +279,11 @@ describe('OrdersService', () => {
         courierId: 'courier-123',
       };
 
-      const mockOrder = { id: 'order-123', status: OrderStatus.CREATED };
+      const mockOrder = {
+        id: 'order-123',
+        status: OrderStatus.CREATED,
+        tenantId: 'tenant-123',
+      };
 
       (mockPrismaService.order.findUnique as jest.Mock).mockResolvedValue(
         mockOrder,
@@ -279,7 +307,11 @@ describe('OrdersService', () => {
         courierId: 'courier-123',
       };
 
-      const mockOrder = { id: 'order-123', status: OrderStatus.CREATED };
+      const mockOrder = {
+        id: 'order-123',
+        status: OrderStatus.CREATED,
+        tenantId: 'tenant-123',
+      };
       const mockCourier = { id: 'courier-123', tenantId: 'different-tenant' };
 
       (mockPrismaService.order.findUnique as jest.Mock).mockResolvedValue(
@@ -306,7 +338,11 @@ describe('OrdersService', () => {
         status: OrderStatus.PICKED_UP,
       };
 
-      const mockOrder = { id: 'order-123', status: OrderStatus.ASSIGNED };
+      const mockOrder = {
+        id: 'order-123',
+        status: OrderStatus.ASSIGNED,
+        tenantId: 'tenant-123',
+      };
       const mockUpdatedOrder = { ...mockOrder, status: OrderStatus.PICKED_UP };
 
       (mockPrismaService.order.findUnique as jest.Mock).mockResolvedValue(
@@ -342,6 +378,7 @@ describe('OrdersService', () => {
         courierId: 'courier-123',
         codAmount: new Decimal(100),
         price: new Decimal(10),
+        tenantId: 'tenant-123',
       };
 
       (mockPrismaService.order.findUnique as jest.Mock).mockResolvedValue(
@@ -359,16 +396,9 @@ describe('OrdersService', () => {
         tenantId: 'tenant-123',
       });
 
-      expect(mockPrismaService.merchantProfile.update).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: { id: 'merchant-123' },
-          data: expect.objectContaining({
-            balance: expect.objectContaining({
-              increment: new Decimal(90),
-            }),
-          }),
-        }),
-      );
+      expect(
+        mockFinanceService.updateMerchantBalanceOnDelivery,
+      ).toHaveBeenCalled();
     });
   });
 });
