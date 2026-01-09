@@ -1,6 +1,6 @@
 import './common/interfaces/express.interface';
 import { ValidationPipe } from '@nestjs/common';
-import { NestFactory } from '@nestjs/core';
+import { NestFactory, Reflector } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
@@ -8,6 +8,7 @@ import { TenantInterceptor } from './common/interceptors/tenant.interceptor';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { RolesGuard } from './modules/iam/authorization/guards/roles.guard';
 import { AccessTokenGuard } from './modules/iam/authentication/guards/access-token.guard';
+import { JwtService } from '@nestjs/jwt';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -39,7 +40,14 @@ async function bootstrap() {
     new TenantInterceptor(),
   );
   app.useGlobalFilters(new AllExceptionsFilter());
-  app.useGlobalGuards(new AccessTokenGuard(), new RolesGuard());
+
+  // Resolve dependencies for global guards
+  const jwtService = app.get(JwtService);
+  const reflector = app.get(Reflector);
+  app.useGlobalGuards(
+    new AccessTokenGuard(jwtService),
+    new RolesGuard(reflector),
+  );
 
   const config = new DocumentBuilder()
     .setTitle('Shipex API')

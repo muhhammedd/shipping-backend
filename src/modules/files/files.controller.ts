@@ -8,11 +8,11 @@ import {
   Res,
   BadRequestException,
 } from '@nestjs/common';
-import { Response } from 'express';
+import type { Response } from 'express';
 import { FilesService } from './files.service';
 import { UploadFileDto } from './dto/upload-file.dto';
 import { ActiveUser } from '../../common/decorators/active-user.decorator';
-import { ActiveUserData } from '../../common/interfaces/active-user-data.interface';
+import type { ActiveUserData } from '../../common/interfaces/active-user-data.interface';
 import * as fs from 'fs';
 
 @Controller('files')

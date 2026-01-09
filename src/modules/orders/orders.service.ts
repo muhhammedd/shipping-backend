@@ -9,7 +9,7 @@ import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { FilterOrderDto } from './dto/filter-order.dto';
 import { AssignOrderDto } from './dto/assign-order.dto';
-import { ActiveUserData } from '../../common/interfaces/active-user-data.interface';
+import type { ActiveUserData } from '../../common/interfaces/active-user-data.interface';
 import { OrderStatus, UserRole, Prisma } from '@prisma/client';
 
 @Injectable()
@@ -79,6 +79,8 @@ export class OrdersService {
     // Get total count for pagination metadata
     const total = await this.prisma.order.count({ where });
 
+    const limit = filterDto.limit || 10;
+
     // Fetch paginated results
     const data = await this.prisma.order.findMany({
       where,
@@ -97,7 +99,7 @@ export class OrdersService {
         },
       },
       skip: filterDto.skip,
-      take: filterDto.limit,
+      take: limit,
       orderBy: { createdAt: 'desc' },
     });
 
@@ -105,9 +107,9 @@ export class OrdersService {
       data,
       meta: {
         page: filterDto.page,
-        limit: filterDto.limit,
+        limit: limit,
         total,
-        totalPages: Math.ceil(total / filterDto.limit),
+        totalPages: Math.ceil(total / limit),
       },
     };
   }

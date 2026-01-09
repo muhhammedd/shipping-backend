@@ -1,7 +1,7 @@
 import { Controller, Get, Patch, Param } from '@nestjs/common';
 import { NotificationsService } from './notifications.service';
 import { ActiveUser } from '../../common/decorators/active-user.decorator';
-import { ActiveUserData } from '../../common/interfaces/active-user-data.interface';
+import type { ActiveUserData } from '../../common/interfaces/active-user-data.interface';
 
 @Controller('notifications')
 export class NotificationsController {

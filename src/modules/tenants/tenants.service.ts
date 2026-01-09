@@ -18,11 +18,13 @@ export class TenantsService {
     // Get total count for pagination metadata
     const total = await this.prisma.tenant.count({ where });
 
+    const limit = filterDto.limit || 10;
+
     // Fetch paginated results
     const data = await this.prisma.tenant.findMany({
       where,
       skip: filterDto.skip,
-      take: filterDto.limit,
+      take: limit,
       orderBy: { createdAt: 'desc' },
     });
 
@@ -30,9 +32,9 @@ export class TenantsService {
       data,
       meta: {
         page: filterDto.page,
-        limit: filterDto.limit,
+        limit: limit,
         total,
-        totalPages: Math.ceil(total / filterDto.limit),
+        totalPages: Math.ceil(total / limit),
       },
     };
   }

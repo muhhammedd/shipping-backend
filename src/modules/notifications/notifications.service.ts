@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../core/prisma.service';
-import { OrderStatus } from '@prisma/client';
+import { OrderStatus, NotificationType } from '@prisma/client';
 
 interface NotificationPayload {
   type: string;
@@ -52,7 +52,7 @@ export class NotificationsService {
   async createNotification(payload: NotificationPayload) {
     return await this.prisma.notification.create({
       data: {
-        type: payload.type,
+        type: payload.type as NotificationType,
         orderId: payload.orderId,
         status: payload.status,
         message: payload.message,

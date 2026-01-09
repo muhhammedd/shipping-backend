@@ -57,8 +57,11 @@ export class HttpExceptionFilter implements ExceptionFilter {
       timestamp: new Date().toISOString(),
       path: request.url,
       method: request.method,
-      ...(details && { details }),
     };
+
+    if (details) {
+      errorResponse.details = details;
+    }
 
     // Log errors
     if (status >= 500) {
