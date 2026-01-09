@@ -60,7 +60,7 @@ export class FinanceService {
       where: { id: order.merchantId },
       data: {
         balance: {
-          increment: balanceChange,
+          increment: balanceChange as any,
         },
       },
     });
@@ -79,7 +79,7 @@ export class FinanceService {
       where: { id: courierId },
       data: {
         wallet: {
-          increment: new Decimal(codAmount),
+          increment: new Decimal(codAmount) as any,
         },
       },
     });
@@ -130,7 +130,7 @@ export class FinanceService {
       where: { id: courierId },
       data: {
         wallet: {
-          decrement: new Decimal(amount),
+          decrement: new Decimal(amount) as any,
         },
       },
     });
