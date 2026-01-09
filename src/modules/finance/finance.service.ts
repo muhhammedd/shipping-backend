@@ -1,7 +1,7 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../core/prisma.service';
 import { OrderStatus } from '@prisma/client';
-import { Decimal } from 'decimal.js';
+import Decimal from 'decimal.js';
 
 @Injectable()
 export class FinanceService {
