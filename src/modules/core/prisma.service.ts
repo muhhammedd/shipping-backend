@@ -1,4 +1,9 @@
-import { Injectable, OnModuleInit, OnModuleDestroy, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  OnModuleInit,
+  OnModuleDestroy,
+  Logger,
+} from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
 
 @Injectable()
@@ -16,9 +21,7 @@ export class PrismaService implements OnModuleInit, OnModuleDestroy {
       // This explicitly tells Prisma to use the Node.js library engine instead of the client engine
       this.prismaClient = new PrismaClient({
         log: ['error', 'warn'],
-        // @ts-ignore - engineType is a valid option for forcing library engine
-        engineType: 'library',
-      } as any);
+      });
     } catch (error) {
       this.logger.error('Failed to initialize PrismaClient', error);
       throw error;

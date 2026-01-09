@@ -396,9 +396,8 @@ describe('OrdersService', () => {
         tenantId: 'tenant-123',
       });
 
-      expect(
-        mockFinanceService.updateMerchantBalanceOnDelivery,
-      ).toHaveBeenCalled();
+      expect(mockPrismaService.merchantProfile.update).toHaveBeenCalled();
+      expect(mockPrismaService.courierProfile.update).toHaveBeenCalled();
     });
   });
 });
