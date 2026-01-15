@@ -12,3 +12,31 @@ PORT = "5000"
 NODE_ENV = "development"
 JWT_EXPIRATION = "3600"
 CORS_ORIGIN = "*"
+
+[workflows]
+runButton = "Project"
+
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Shipex API"
+
+[[workflows.workflow]]
+name = "Shipex API"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm run start:dev"
+waitForPort = 5000
+
+[workflows.workflow.metadata]
+outputType = "webview"
+
+[[ports]]
+localPort = 5000
+externalPort = 80

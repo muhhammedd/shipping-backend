@@ -17,10 +17,9 @@ export class PrismaService implements OnModuleInit, OnModuleDestroy {
 
   private initializePrismaClient(): void {
     try {
-      // Force library engine to avoid "client" engine validation errors
-      // This explicitly tells Prisma to use the Node.js library engine instead of the client engine
       this.prismaClient = new PrismaClient({
         log: ['error', 'warn'],
+        datasourceUrl: process.env.DATABASE_URL,
       });
     } catch (error) {
       this.logger.error('Failed to initialize PrismaClient', error);
