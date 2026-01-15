@@ -13,12 +13,9 @@ import { JwtService } from '@nestjs/jwt';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  // Enable CORS
+  // Enable CORS - allow all origins for Replit proxy
   app.enableCors({
-    origin: process.env.CORS_ORIGIN?.split(',') || [
-      'http://localhost:3000',
-      'http://localhost:3001',
-    ],
+    origin: process.env.CORS_ORIGIN === '*' ? true : (process.env.CORS_ORIGIN?.split(',') || true),
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
@@ -63,9 +60,9 @@ async function bootstrap() {
     },
   });
 
-  const port = process.env.PORT ?? 3000;
-  await app.listen(port);
-  console.log(`🚀 Shipex API is running on http://localhost:${port}`);
+  const port = process.env.PORT ?? 5000;
+  await app.listen(port, '0.0.0.0');
+  console.log(`🚀 Shipex API is running on http://0.0.0.0:${port}`);
   console.log(
     `📚 Swagger documentation available at http://localhost:${port}/api/docs`,
   );
