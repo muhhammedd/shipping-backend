@@ -36,5 +36,6 @@ import { RolesGuard } from './authorization/guards/roles.guard';
     AuthenticationService,
   ],
   controllers: [AuthenticationController],
+  exports: [HashingService, JwtModule, AuthenticationService],
 })
 export class IamModule {}
