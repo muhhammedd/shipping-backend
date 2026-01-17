@@ -48,7 +48,12 @@ export class OrdersService {
   }
 
   async findAll(user: ActiveUserData, filterDto: FilterOrderDto) {
-    const where: Prisma.OrderWhereInput = { tenantId: user.tenantId };
+    const where: Prisma.OrderWhereInput = {};
+
+    // Apply tenant isolation unless user is SUPER_ADMIN
+    if (user.role !== UserRole.SUPER_ADMIN) {
+      where.tenantId = user.tenantId;
+    }
 
     // Merchants can only see their own orders
     if (user.role === UserRole.MERCHANT) {
@@ -115,8 +120,15 @@ export class OrdersService {
   }
 
   async findOne(id: string, user: ActiveUserData) {
+    const where: Prisma.OrderWhereInput = { id };
+
+    // Apply tenant isolation unless user is SUPER_ADMIN
+    if (user.role !== UserRole.SUPER_ADMIN) {
+      where.tenantId = user.tenantId;
+    }
+
     const order = await this.prisma.order.findFirst({
-      where: { id, tenantId: user.tenantId },
+      where,
       include: {
         merchant: {
           select: {
@@ -150,8 +162,13 @@ export class OrdersService {
     updateOrderStatusDto: UpdateOrderStatusDto,
     user: ActiveUserData,
   ) {
-    const order = await this.prisma.order.findUnique({
-      where: { id, tenantId: user.tenantId },
+    const where: Prisma.OrderWhereInput = { id };
+    if (user.role !== UserRole.SUPER_ADMIN) {
+      where.tenantId = user.tenantId;
+    }
+
+    const order = await this.prisma.order.findFirst({
+      where,
     });
 
     if (!order) {

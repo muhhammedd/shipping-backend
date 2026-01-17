@@ -18,11 +18,16 @@ export class TenantInterceptor implements NestInterceptor {
     const request = context.switchToHttp().getRequest<RequestWithUser>();
     const user = request.user;
 
-    if (!user || !user.tenantId) {
+    if (!user) {
       return next.handle();
     }
 
-    if (request.body && typeof request.body === 'object') {
+    // Super Admin can bypass tenant isolation to manage all tenants
+    if (user.role === 'SUPER_ADMIN') {
+      return next.handle();
+    }
+
+    if (user.tenantId && request.body && typeof request.body === 'object') {
       (request.body as Record<string, unknown>).tenantId = user.tenantId;
     }
 

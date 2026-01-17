@@ -17,6 +17,14 @@ enum UserRole {
 enum TenantStatus {
   ACTIVE
   SUSPENDED
+  TRIAL
+}
+
+enum SubscriptionPlan {
+  FREE
+  BASIC
+  PREMIUM
+  ENTERPRISE
 }
 
 enum OrderStatus {
@@ -37,12 +45,15 @@ enum NotificationType {
 }
 
 model Tenant {
-  id        String       @id @default(uuid())
+  id        String           @id @default(uuid())
   name      String
-  slug      String       @unique
-  status    TenantStatus @default(ACTIVE)
-  createdAt DateTime     @default(now())
-  updatedAt DateTime     @updatedAt
+  slug      String           @unique
+  status    TenantStatus     @default(ACTIVE)
+  plan      SubscriptionPlan @default(FREE)
+  maxOrders Int              @default(100)
+  expiresAt DateTime?
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
 
   // Relationships
   users            User[]
