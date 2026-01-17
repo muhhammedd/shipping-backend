@@ -13,7 +13,7 @@ import { JwtService } from '@nestjs/jwt';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  // Enable CORS - allow all origins for Replit proxy
+  // Enable CORS
   app.enableCors({
     origin: process.env.CORS_ORIGIN === '*' ? true : (process.env.CORS_ORIGIN?.split(',') || true),
     credentials: true,
