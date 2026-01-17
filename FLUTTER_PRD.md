@@ -8,9 +8,10 @@ This document outlines the Product Requirements Document (PRD) and strategic adv
 
 ## 🎯 Project Goals | أهداف المشروع
 Create a unified mobile experience for three distinct user types:
-1.  **Administrators (Admins):** To manage the entire system, tenants, and high-level operations.
-2.  **Merchants (Traders):** To create orders, track shipments, and manage their financial balance.
-3.  **Couriers (Delegates):** To receive assignments, update order statuses, and manage their wallets.
+1.  **Super Admin (Platform Owner):** To manage the entire SaaS ecosystem, tenants (shipping companies), and system-wide settings.
+2.  **Admin (Shipping Company Owner):** To manage their specific company, couriers, merchants, and orders.
+3.  **Merchants (Traders):** To create orders, track shipments, and manage their financial balance.
+4.  **Couriers (Delegates):** To receive assignments, update order statuses, and manage their wallets.
 
 ---
 
@@ -32,11 +33,15 @@ Create a unified mobile experience for three distinct user types:
 *   **Wallet:** Track earnings per delivery and total collected COD.
 *   **Real-time Alerts:** Push notifications for new assignments.
 
-### 3. Admin Dashboard (لوحة تحكم المدير)
-*   **Tenant Management:** Overview of all shipping companies (for Super Admin).
-*   **User Management:** Create and manage Merchants and Couriers.
-*   **Order Oversight:** Monitor all orders, manually assign couriers if needed.
-*   **Analytics:** Reports on delivery performance, revenue, and order volume.
+### 3. Super Admin App (تطبيق مالك المنصة)
+*   **Tenant Management:** Create, suspend, or delete shipping companies (Tenants).
+*   **Subscription Tracking:** Monitor active plans and revenue from tenants.
+*   **System Health:** Overview of total orders and users across the entire platform.
+
+### 4. Admin App (تطبيق مدير شركة الشحن)
+*   **User Management:** Create and manage Merchants and Couriers within their company.
+*   **Order Oversight:** Monitor all company orders, manually assign couriers.
+*   **Company Analytics:** Reports on delivery performance and revenue for their specific tenant.
 
 ---
 

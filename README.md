@@ -9,7 +9,7 @@ Shipex is a comprehensive Multi-Tenant B2B SaaS platform designed to streamline 
 ## 🚀 Key Features | المميزات الرئيسية
 
 - **Multi-Tenancy (Row-Level Isolation):** Secure data isolation for different shipping companies using a single database.
-- **Role-Based Access Control (RBAC):** Specialized dashboards for Super Admins, Admins, Merchants, and Couriers.
+- **Role-Based Access Control (RBAC):** Specialized dashboards for Platform Owners (Super Admins), Shipping Company Owners (Admins), Merchants, and Couriers.
 - **Order Lifecycle Management:** Complete tracking of orders from "Pending" to "Delivered" or "Returned".
 - **Financial Tracking:** Real-time balance calculations for merchants and Cash on Delivery (COD) handling.
 - **Real-Time Notifications:** Instant updates via WebSockets for status changes and assignments.
@@ -17,7 +17,7 @@ Shipex is a comprehensive Multi-Tenant B2B SaaS platform designed to streamline 
 - **API Documentation:** Fully documented RESTful API using Swagger/OpenAPI.
 
 - **تعدد المستأجرين (عزل البيانات):** عزل آمن للبيانات لكل شركة شحن باستخدام قاعدة بيانات واحدة.
-- **نظام صلاحيات متطور (RBAC):** واجهات مخصصة لكل من (المدير العام، مدير النظام، التاجر، والمندوب).
+- **نظام صلاحيات متطور (RBAC):** واجهات مخصصة لكل من (مالك المنصة Super Admin، مدير شركة الشحن Admin، التاجر، والمندوب).
 - **إدارة دورة حياة الطلبات:** تتبع كامل للطلبات من حالة "قيد الانتظار" إلى "تم التسليم" أو "مرتجع".
 - **التتبع المالي:** حسابات فورية لأرصدة التجار ومعالجة مبالغ التحصيل عند الاستلام (COD).
 - **تنبيهات فورية:** تحديثات مباشرة عبر WebSockets لتغييرات الحالة والتعيينات.
@@ -43,8 +43,8 @@ Shipex is a comprehensive Multi-Tenant B2B SaaS platform designed to streamline 
 ```text
 src/modules/
 ├── core/           # PrismaService (Global database access)
-├── iam/            # Identity & Access Management (Auth, RBAC)
-├── tenants/        # Tenant management (Super Admin only)
+├── iam/            # Identity & Access Management (Auth, RBAC, SaaS Hierarchy)
+├── tenants/        # Tenant & Subscription management (Super Admin only)
 ├── orders/         # Order CRUD & Lifecycle management
 ├── finance/        # Merchant balance & COD handling
 ├── files/          # File upload/download management
