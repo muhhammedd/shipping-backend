@@ -16,7 +16,7 @@ export class AuthenticationService {
     private readonly prisma: PrismaService,
     private readonly hashingService: HashingService,
     private readonly jwtService: JwtService,
-  ) {}
+  ) { }
 
   async signUp(signUpDto: SignUpDto) {
     try {
@@ -58,12 +58,23 @@ export class AuthenticationService {
   }
 
   async signIn(signInDto: SignInDto) {
+    // Fetch user with profiles
     const user = await this.prisma.user.findUnique({
       where: { email: signInDto.email },
+      include: {
+        merchantProfile: true,
+        courierProfile: true,
+      },
     });
 
     if (!user) {
+      console.error(`SignIn failed: User not found for email ${signInDto.email}`);
       throw new UnauthorizedException('Invalid credentials');
+    }
+
+    if (!user.isActive) {
+      console.error(`SignIn failed: User account is inactive for ${signInDto.email}`);
+      throw new UnauthorizedException('Account is inactive');
     }
 
     const isEqual = await this.hashingService.compare(
@@ -72,9 +83,17 @@ export class AuthenticationService {
     );
 
     if (!isEqual) {
+      console.error(`SignIn failed: Invalid password for ${signInDto.email}`);
       throw new UnauthorizedException('Invalid credentials');
     }
 
+    // Derive user name from profile or email
+    let userName = user.email.split('@')[0];
+    if (user.merchantProfile?.companyName) {
+      userName = user.merchantProfile.companyName;
+    }
+
+    // Create JWT payload
     const accessToken = await this.jwtService.signAsync({
       sub: user.id,
       email: user.email,
@@ -82,6 +101,30 @@ export class AuthenticationService {
       tenantId: user.tenantId,
     });
 
-    return { accessToken };
+    console.log(`SignIn successful for ${user.email} with role ${user.role}`);
+
+    return {
+      access_token: accessToken,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: userName,
+        role: user.role,
+        tenantId: user.tenantId,
+        isActive: user.isActive,
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt,
+        merchantProfile: user.merchantProfile ? {
+          id: user.merchantProfile.id,
+          companyName: user.merchantProfile.companyName,
+          balance: user.merchantProfile.balance.toString(),
+        } : undefined,
+        courierProfile: user.courierProfile ? {
+          id: user.courierProfile.id,
+          vehicleInfo: user.courierProfile.vehicleInfo,
+          wallet: user.courierProfile.wallet.toString(),
+        } : undefined,
+      },
+    };
   }
 }

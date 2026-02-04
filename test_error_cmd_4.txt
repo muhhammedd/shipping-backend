@@ -1,0 +1,95 @@
+
+> shipex-platform@0.0.1 test:e2e
+> jest --config ./test/jest-e2e.json test/auth.e2e-spec.ts
+
+FAIL test/auth.e2e-spec.ts (6.228 s)
+  AuthController (Integration)
+    POST /auth/sign-in
+      × should fail with incorrect credentials (4 ms)
+      × should sign in successfully with correct credentials (1 ms)
+
+  ● AuthController (Integration) › POST /auth/sign-in › should fail with incorrect credentials
+
+    TypeError: DailyRotateFile is not a constructor
+
+    [0m [90m 46 |[39m
+     [90m 47 |[39m         [90m// Daily rotate file transport for all logs[39m
+    [31m[1m>[22m[39m[90m 48 |[39m         [36mconst[39m allLogsTransport [33m=[39m [36mnew[39m [33mDailyRotateFile[39m({
+     [90m    |[39m                                  [31m[1m^[22m[39m
+     [90m 49 |[39m             filename[33m:[39m [32m'logs/application-%DATE%.log'[39m[33m,[39m
+     [90m 50 |[39m             datePattern[33m:[39m [32m'YYYY-MM-DD'[39m[33m,[39m
+     [90m 51 |[39m             zippedArchive[33m:[39m [36mtrue[39m[33m,[39m[0m
+
+      at LoggerService.createLogger (../src/common/logger/logger.service.ts:48:34)
+      at new LoggerService (../src/common/logger/logger.service.ts:16:28)
+      at TestingInjector.instantiateClass (../node_modules/@nestjs/core/injector/injector.js:422:19)
+      at callback (../node_modules/@nestjs/core/injector/injector.js:70:45)
+      at TestingInjector.resolveConstructorParams (../node_modules/@nestjs/core/injector/injector.js:170:24)
+      at TestingInjector.loadInstance (../node_modules/@nestjs/core/injector/injector.js:75:13)
+      at TestingInjector.loadProvider (../node_modules/@nestjs/core/injector/injector.js:103:9)
+      at TestingInjector.resolveComponentHost (../node_modules/@nestjs/core/injector/injector.js:247:13)
+      at TestingInjector.resolveComponentHost (../node_modules/@nestjs/testing/testing-injector.js:28:45)
+      at resolveParam (../node_modules/@nestjs/core/injector/injector.js:148:50)
+          at async Promise.all (index 0)
+      at TestingInjector.resolveConstructorParams (../node_modules/@nestjs/core/injector/injector.js:169:27)
+      at TestingInjector.loadInstance (../node_modules/@nestjs/core/injector/injector.js:75:13)
+      at TestingInjector.loadProvider (../node_modules/@nestjs/core/injector/injector.js:103:9)
+      at ../node_modules/@nestjs/core/injector/instance-loader.js:56:13
+          at async Promise.all (index 4)
+      at TestingInstanceLoader.createInstancesOfProviders (../node_modules/@nestjs/core/injector/instance-loader.js:55:9)
+      at ../node_modules/@nestjs/core/injector/instance-loader.js:40:13
+          at async Promise.all (index 2)
+      at TestingInstanceLoader.createInstances (../node_modules/@nestjs/core/injector/instance-loader.js:39:9)
+      at TestingInstanceLoader.createInstancesOfDependencies (../node_modules/@nestjs/core/injector/instance-loader.js:22:13)
+      at TestingInstanceLoader.createInstancesOfDependencies (../node_modules/@nestjs/testing/testing-instance-loader.js:9:9)
+      at TestingModuleBuilder.createInstancesOfDependencies (../node_modules/@nestjs/testing/testing-module.builder.js:118:9)
+      at TestingModuleBuilder.compile (../node_modules/@nestjs/testing/testing-module.builder.js:74:9)
+      at Object.<anonymous> (auth.e2e-spec.ts:19:46)
+
+  ● AuthController (Integration) › POST /auth/sign-in › should sign in successfully with correct credentials
+
+    TypeError: DailyRotateFile is not a constructor
+
+    [0m [90m 46 |[39m
+     [90m 47 |[39m         [90m// Daily rotate file transport for all logs[39m
+    [31m[1m>[22m[39m[90m 48 |[39m         [36mconst[39m allLogsTransport [33m=[39m [36mnew[39m [33mDailyRotateFile[39m({
+     [90m    |[39m                                  [31m[1m^[22m[39m
+     [90m 49 |[39m             filename[33m:[39m [32m'logs/application-%DATE%.log'[39m[33m,[39m
+     [90m 50 |[39m             datePattern[33m:[39m [32m'YYYY-MM-DD'[39m[33m,[39m
+     [90m 51 |[39m             zippedArchive[33m:[39m [36mtrue[39m[33m,[39m[0m
+
+      at LoggerService.createLogger (../src/common/logger/logger.service.ts:48:34)
+      at new LoggerService (../src/common/logger/logger.service.ts:16:28)
+      at TestingInjector.instantiateClass (../node_modules/@nestjs/core/injector/injector.js:422:19)
+      at callback (../node_modules/@nestjs/core/injector/injector.js:70:45)
+      at TestingInjector.resolveConstructorParams (../node_modules/@nestjs/core/injector/injector.js:170:24)
+      at TestingInjector.loadInstance (../node_modules/@nestjs/core/injector/injector.js:75:13)
+      at TestingInjector.loadProvider (../node_modules/@nestjs/core/injector/injector.js:103:9)
+      at TestingInjector.resolveComponentHost (../node_modules/@nestjs/core/injector/injector.js:247:13)
+      at TestingInjector.resolveComponentHost (../node_modules/@nestjs/testing/testing-injector.js:28:45)
+      at resolveParam (../node_modules/@nestjs/core/injector/injector.js:148:50)
+          at async Promise.all (index 0)
+      at TestingInjector.resolveConstructorParams (../node_modules/@nestjs/core/injector/injector.js:169:27)
+      at TestingInjector.loadInstance (../node_modules/@nestjs/core/injector/injector.js:75:13)
+      at TestingInjector.loadProvider (../node_modules/@nestjs/core/injector/injector.js:103:9)
+      at ../node_modules/@nestjs/core/injector/instance-loader.js:56:13
+          at async Promise.all (index 4)
+      at TestingInstanceLoader.createInstancesOfProviders (../node_modules/@nestjs/core/injector/instance-loader.js:55:9)
+      at ../node_modules/@nestjs/core/injector/instance-loader.js:40:13
+          at async Promise.all (index 2)
+      at TestingInstanceLoader.createInstances (../node_modules/@nestjs/core/injector/instance-loader.js:39:9)
+      at TestingInstanceLoader.createInstancesOfDependencies (../node_modules/@nestjs/core/injector/instance-loader.js:22:13)
+      at TestingInstanceLoader.createInstancesOfDependencies (../node_modules/@nestjs/testing/testing-instance-loader.js:9:9)
+      at TestingModuleBuilder.createInstancesOfDependencies (../node_modules/@nestjs/testing/testing-module.builder.js:118:9)
+      at TestingModuleBuilder.compile (../node_modules/@nestjs/testing/testing-module.builder.js:74:9)
+      at Object.<anonymous> (auth.e2e-spec.ts:19:46)
+
+Test Suites: 1 failed, 1 total
+Tests:       2 failed, 2 total
+Snapshots:   0 total
+Time:        7.287 s, estimated 12 s
+Ran all test suites matching test/auth.e2e-spec.ts.
+Jest did not exit one second after the test run has completed.
+
+'This usually means that there are asynchronous operations that weren't stopped in your tests. Consider running Jest with `--detectOpenHandles` to troubleshoot this issue.
+Terminate batch job (Y/N)? 

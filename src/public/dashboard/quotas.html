@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Quota Dashboard - Shipex</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f8fafc;
+            color: #1e293b;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px 20px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .header-content {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header h1 {
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 16px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 30px 20px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 24px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 24px;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .stat-card .label {
+            font-size: 14px;
+            color: #64748b;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .stat-card .value {
+            font-size: 36px;
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 8px;
+        }
+
+        .stat-card .change {
+            font-size: 14px;
+            color: #10b981;
+        }
+
+        .stat-card .change.negative {
+            color: #ef4444;
+        }
+
+        .chart-container {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            margin-bottom: 30px;
+        }
+
+        .chart-container h2 {
+            font-size: 20px;
+            margin-bottom: 20px;
+            color: #1e293b;
+        }
+
+        .table-container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        thead {
+            background: #f8fafc;
+        }
+
+        th {
+            padding: 16px;
+            text-align: left;
+            font-size: 12px;
+            font-weight: 600;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        td {
+            padding: 16px;
+            border-top: 1px solid #e2e8f0;
+            font-size: 14px;
+        }
+
+        tr:hover {
+            background: #f8fafc;
+        }
+
+        .plan-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .plan-badge.free {
+            background: #e0e7ff;
+            color: #3730a3;
+        }
+
+        .plan-badge.basic {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .plan-badge.premium {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .plan-badge.enterprise {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e2e8f0;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            transition: width 0.3s;
+        }
+
+        .progress-fill.warning {
+            background: linear-gradient(90deg, #f59e0b 0%, #d97706 100%);
+        }
+
+        .progress-fill.danger {
+            background: linear-gradient(90deg, #ef4444 0%, #dc2626 100%);
+        }
+
+        .loading {
+            text-align: center;
+            padding: 60px 20px;
+        }
+
+        .spinner {
+            border: 3px solid #f3f4f6;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="header">
+        <div class="header-content">
+            <h1>📊 API Quota Dashboard</h1>
+            <p>Monitor API usage and rate limits across all tenants</p>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p style="color: #64748b;">Loading dashboard data...</p>
+        </div>
+
+        <div id="dashboard" style="display: none;">
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="label">Total Requests (24h)</div>
+                    <div class="value" id="totalRequests">0</div>
+                    <div class="change" id="requestsChange">+0%</div>
+                </div>
+                <div class="stat-card">
+                    <div class="label">Active Tenants</div>
+                    <div class="value" id="activeTenants">0</div>
+                    <div class="change">Currently active</div>
+                </div>
+                <div class="stat-card">
+                    <div class="label">Avg Requests/Tenant</div>
+                    <div class="value" id="avgRequests">0</div>
+                    <div class="change">Per hour</div>
+                </div>
+                <div class="stat-card">
+                    <div class="label">Near Limit</div>
+                    <div class="value" id="nearLimit">0</div>
+                    <div class="change">Tenants at >80%</div>
+                </div>
+            </div>
+
+            <div class="chart-container">
+                <h2>Usage Trends (Last 7 Days)</h2>
+                <canvas id="usageChart"></canvas>
+            </div>
+
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Tenant</th>
+                            <th>Plan</th>
+                            <th>Usage</th>
+                            <th>Limit</th>
+                            <th>Remaining</th>
+                            <th>Progress</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tenantsTable">
+                        <!-- Populated by JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let usageChart = null;
+
+        async function loadDashboard() {
+            try {
+                // Simulated data - in production, fetch from /admin/quotas/overview
+                const mockData = {
+                    totalRequests: 45678,
+                    activeTenants: 24,
+                    avgRequests: 158,
+                    nearLimit: 3,
+                    tenants: [
+                        { id: '1', name: 'Acme Corp', plan: 'PREMIUM', used: 8500, limit: 10000 },
+                        { id: '2', name: 'Tech Startup', plan: 'BASIC', used: 850, limit: 1000 },
+                        { id: '3', name: 'E-commerce Ltd', plan: 'ENTERPRISE', used: 25000, limit: -1 },
+                        { id: '4', name: 'Small Business', plan: 'FREE', used: 45, limit: 100 },
+                        { id: '5', name: 'Logistics Pro', plan: 'PREMIUM', used: 6200, limit: 10000 },
+                    ],
+                    history: [
+                        { date: '2024-01-28', requests: 3200 },
+                        { date: '2024-01-29', requests: 3800 },
+                        { date: '2024-01-30', requests: 4100 },
+                        { date: '2024-01-31', requests: 3900 },
+                        { date: '2024-02-01', requests: 4500 },
+                        { date: '2024-02-02', requests: 5200 },
+                        { date: '2024-02-03', requests: 6100 },
+                    ]
+                };
+
+                displayStats(mockData);
+                displayChart(mockData.history);
+                displayTenants(mockData.tenants);
+
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('dashboard').style.display = 'block';
+            } catch (error) {
+                console.error('Failed to load dashboard:', error);
+            }
+        }
+
+        function displayStats(data) {
+            document.getElementById('totalRequests').textContent = data.totalRequests.toLocaleString();
+            document.getElementById('activeTenants').textContent = data.activeTenants;
+            document.getElementById('avgRequests').textContent = data.avgRequests;
+            document.getElementById('nearLimit').textContent = data.nearLimit;
+            document.getElementById('requestsChange').textContent = '+12.5%';
+        }
+
+        function displayChart(history) {
+            const ctx = document.getElementById('usageChart').getContext('2d');
+
+            if (usageChart) {
+                usageChart.destroy();
+            }
+
+            usageChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: history.map(h => new Date(h.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })),
+                    datasets: [{
+                        label: 'API Requests',
+                        data: history.map(h => h.requests),
+                        borderColor: '#667eea',
+                        backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function (value) {
+                                    return value.toLocaleString();
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function displayTenants(tenants) {
+            const tbody = document.getElementById('tenantsTable');
+            tbody.innerHTML = '';
+
+            tenants.forEach(tenant => {
+                const percentage = tenant.limit === -1 ? 0 : (tenant.used / tenant.limit) * 100;
+                const remaining = tenant.limit === -1 ? 'Unlimited' : (tenant.limit - tenant.used).toLocaleString();
+
+                let progressClass = '';
+                if (percentage > 80) progressClass = 'danger';
+                else if (percentage > 60) progressClass = 'warning';
+
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td><strong>${tenant.name}</strong></td>
+                    <td><span class="plan-badge ${tenant.plan.toLowerCase()}">${tenant.plan}</span></td>
+                    <td>${tenant.used.toLocaleString()}</td>
+                    <td>${tenant.limit === -1 ? 'Unlimited' : tenant.limit.toLocaleString()}</td>
+                    <td>${remaining}</td>
+                    <td>
+                        <div class="progress-bar">
+                            <div class="progress-fill ${progressClass}" style="width: ${Math.min(percentage, 100)}%"></div>
+                        </div>
+                        <small style="color: #64748b; margin-top: 4px; display: block;">${percentage.toFixed(1)}%</small>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        // Load dashboard on page load
+        loadDashboard();
+
+        // Refresh every 30 seconds
+        setInterval(loadDashboard, 30000);
+    </script>
+</body>
+
+</html>

@@ -15,7 +15,7 @@ export class AccessTokenGuard implements CanActivate {
   constructor(
     private readonly jwtService: JwtService,
     private readonly reflector: Reflector,
-  ) {}
+  ) { }
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
@@ -29,12 +29,14 @@ export class AccessTokenGuard implements CanActivate {
     const request = context.switchToHttp().getRequest<Request>();
     const token = this.extractTokenFromHeader(request);
     if (!token) {
+      console.error('No token found in request headers');
       throw new UnauthorizedException();
     }
     try {
       const payload = await this.jwtService.verifyAsync<ActiveUserData>(token);
       request.user = payload;
-    } catch {
+    } catch (error: any) {
+      console.error('JWT Verification failed:', error.message);
       throw new UnauthorizedException();
     }
     return true;

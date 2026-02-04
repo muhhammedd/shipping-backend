@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Track Your Order - Shipex</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 600px;
+            width: 100%;
+            padding: 40px;
+        }
+
+        .logo {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .logo h1 {
+            color: #667eea;
+            font-size: 32px;
+            font-weight: 700;
+        }
+
+        .search-box {
+            margin-bottom: 30px;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 16px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+
+        .search-box input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .search-box button {
+            width: 100%;
+            margin-top: 12px;
+            padding: 16px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .search-box button:hover {
+            transform: translateY(-2px);
+        }
+
+        .search-box button:active {
+            transform: translateY(0);
+        }
+
+        .tracking-info {
+            display: none;
+        }
+
+        .tracking-info.show {
+            display: block;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+
+        .status-badge.in-transit {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .status-badge.delivered {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .status-badge.created {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .info-item {
+            padding: 16px;
+            background: #f8fafc;
+            border-radius: 8px;
+        }
+
+        .info-item label {
+            display: block;
+            font-size: 12px;
+            color: #64748b;
+            margin-bottom: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .info-item value {
+            display: block;
+            font-size: 16px;
+            color: #1e293b;
+            font-weight: 600;
+        }
+
+        .timeline {
+            position: relative;
+            padding-left: 30px;
+        }
+
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 8px;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: #e2e8f0;
+        }
+
+        .timeline-item {
+            position: relative;
+            margin-bottom: 24px;
+        }
+
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            left: -26px;
+            top: 4px;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #667eea;
+            border: 3px solid white;
+            box-shadow: 0 0 0 2px #667eea;
+        }
+
+        .timeline-item .time {
+            font-size: 12px;
+            color: #64748b;
+            margin-bottom: 4px;
+        }
+
+        .timeline-item .status {
+            font-size: 16px;
+            color: #1e293b;
+            font-weight: 600;
+        }
+
+        .timeline-item .location {
+            font-size: 14px;
+            color: #64748b;
+            margin-top: 4px;
+        }
+
+        .error {
+            display: none;
+            padding: 16px;
+            background: #fee2e2;
+            color: #991b1b;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .error.show {
+            display: block;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 40px;
+        }
+
+        .loading.show {
+            display: block;
+        }
+
+        .spinner {
+            border: 3px solid #f3f4f6;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 640px) {
+            .info-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">
+            <h1>📦 Shipex</h1>
+            <p style="color: #64748b; margin-top: 8px;">Track your order</p>
+        </div>
+
+        <div class="search-box">
+            <input 
+                type="text" 
+                id="trackingInput" 
+                placeholder="Enter tracking number (e.g., SHX123456789)"
+                onkeypress="if(event.key === 'Enter') trackOrder()"
+            >
+            <button onclick="trackOrder()">Track Order</button>
+        </div>
+
+        <div class="error" id="error"></div>
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p style="margin-top: 16px; color: #64748b;">Loading tracking information...</p>
+        </div>
+
+        <div class="tracking-info" id="trackingInfo">
+            <div class="status-badge" id="statusBadge"></div>
+            
+            <div class="info-grid">
+                <div class="info-item">
+                    <label>Tracking Number</label>
+                    <value id="trackingNumber"></value>
+                </div>
+                <div class="info-item">
+                    <label>Status</label>
+                    <value id="status"></value>
+                </div>
+                <div class="info-item">
+                    <label>Recipient</label>
+                    <value id="recipient"></value>
+                </div>
+                <div class="info-item">
+                    <label>Destination</label>
+                    <value id="destination"></value>
+                </div>
+            </div>
+
+            <h3 style="margin-bottom: 20px; color: #1e293b;">Tracking History</h3>
+            <div class="timeline" id="timeline"></div>
+        </div>
+    </div>
+
+    <script>
+        // Get tracking number from URL parameter
+        const urlParams = new URLSearchParams(window.location.search);
+        const trackingParam = urlParams.get('tracking');
+        if (trackingParam) {
+            document.getElementById('trackingInput').value = trackingParam;
+            trackOrder();
+        }
+
+        async function trackOrder() {
+            const trackingNumber = document.getElementById('trackingInput').value.trim();
+            
+            if (!trackingNumber) {
+                showError('Please enter a tracking number');
+                return;
+            }
+
+            hideError();
+            hideTracking();
+            showLoading();
+
+            try {
+                const response = await fetch(`/api/v1/public/track/${trackingNumber}`);
+                
+                if (!response.ok) {
+                    throw new Error('Order not found');
+                }
+
+                const data = await response.json();
+                displayTracking(data);
+            } catch (error) {
+                showError(error.message || 'Failed to fetch tracking information');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        function displayTracking(data) {
+            document.getElementById('trackingNumber').textContent = data.trackingNumber;
+            document.getElementById('status').textContent = data.statusLabel || data.status;
+            document.getElementById('recipient').textContent = data.recipient?.name || 'N/A';
+            document.getElementById('destination').textContent = data.recipient?.city || 'N/A';
+
+            // Status badge
+            const badge = document.getElementById('statusBadge');
+            badge.textContent = data.statusLabel || data.status;
+            badge.className = 'status-badge';
+            if (data.status === 'DELIVERED') {
+                badge.classList.add('delivered');
+            } else if (data.status === 'IN_TRANSIT' || data.status === 'PICKED_UP') {
+                badge.classList.add('in-transit');
+            } else {
+                badge.classList.add('created');
+            }
+
+            // Timeline
+            const timeline = document.getElementById('timeline');
+            timeline.innerHTML = '';
+            
+            if (data.history && data.history.length > 0) {
+                data.history.forEach(item => {
+                    const timelineItem = document.createElement('div');
+                    timelineItem.className = 'timeline-item';
+                    
+                    const date = new Date(item.timestamp);
+                    const timeStr = date.toLocaleString();
+                    
+                    timelineItem.innerHTML = `
+                        <div class="time">${timeStr}</div>
+                        <div class="status">${item.status}</div>
+                        ${item.location ? `<div class="location">📍 ${item.location}</div>` : ''}
+                    `;
+                    
+                    timeline.appendChild(timelineItem);
+                });
+            }
+
+            document.getElementById('trackingInfo').classList.add('show');
+        }
+
+        function showError(message) {
+            const error = document.getElementById('error');
+            error.textContent = message;
+            error.classList.add('show');
+        }
+
+        function hideError() {
+            document.getElementById('error').classList.remove('show');
+        }
+
+        function showLoading() {
+            document.getElementById('loading').classList.add('show');
+        }
+
+        function hideLoading() {
+            document.getElementById('loading').classList.remove('show');
+        }
+
+        function hideTracking() {
+            document.getElementById('trackingInfo').classList.remove('show');
+        }
+    </script>
+</body>
+</html>

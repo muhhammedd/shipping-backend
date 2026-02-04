@@ -13,18 +13,21 @@ import { ActiveUser } from '../../../common/decorators/active-user.decorator';
 import type { ActiveUserData } from '../../../common/interfaces/active-user-data.interface';
 
 import { Public } from '../../../common/decorators/public.decorator';
+import { RateLimit } from '../../../common/decorators/rate-limit.decorator';
 
 @Controller('iam')
 export class AuthenticationController {
-  constructor(private readonly authService: AuthenticationService) {}
+  constructor(private readonly authService: AuthenticationService) { }
 
   @Public()
+  @RateLimit({ limit: 5, ttl: 60 })
   @Post('sign-up')
   signUp(@Body() signUpDto: SignUpDto) {
     return this.authService.signUp(signUpDto);
   }
 
   @Public()
+  @RateLimit({ limit: 5, ttl: 60 })
   @HttpCode(HttpStatus.OK)
   @Post('sign-in')
   signIn(@Body() signInDto: SignInDto) {

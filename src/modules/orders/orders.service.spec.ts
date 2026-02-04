@@ -4,6 +4,8 @@ import { PrismaService } from '../core/prisma.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { AssignOrderDto } from './dto/assign-order.dto';
+import { BulkUpdateOrderStatusDto } from './dto/bulk-update-order-status.dto';
+import { BulkAssignOrderDto } from './dto/bulk-assign-order.dto';
 import {
   NotFoundException,
   BadRequestException,
@@ -225,6 +227,45 @@ describe('OrdersService', () => {
     });
   });
 
+  describe('findOne', () => {
+    it('should return an order successfully', async () => {
+      const mockOrder = {
+        id: 'order-123',
+        tenantId: 'tenant-123',
+        merchantId: 'merchant-123',
+        courierId: 'courier-123',
+      };
+
+      const mockMerchant = { id: 'merchant-123', userId: 'user-123' };
+
+      (mockPrismaService.order.findFirst as jest.Mock).mockResolvedValue(mockOrder);
+      (mockPrismaService.merchantProfile.findUnique as jest.Mock).mockResolvedValue(mockMerchant);
+
+      const result = await service.findOne('order-123', {
+        sub: 'user-123',
+        email: 'test@example.com',
+        role: UserRole.MERCHANT,
+        tenantId: 'tenant-123',
+      });
+
+      expect(result).toEqual(mockOrder);
+      expect(mockPrismaService.order.findFirst).toHaveBeenCalled();
+    });
+
+    it('should throw NotFoundException if order does not exist', async () => {
+      (mockPrismaService.order.findFirst as jest.Mock).mockResolvedValue(null);
+
+      await expect(
+        service.findOne('order-999', {
+          sub: 'admin-123',
+          email: 'admin@example.com',
+          role: UserRole.ADMIN,
+          tenantId: 'tenant-123',
+        }),
+      ).rejects.toThrow(NotFoundException);
+    });
+  });
+
   describe('assignOrder', () => {
     it('should assign order to courier successfully', async () => {
       const assignOrderDto: AssignOrderDto = {
@@ -342,10 +383,13 @@ describe('OrdersService', () => {
         id: 'order-123',
         status: OrderStatus.ASSIGNED,
         tenantId: 'tenant-123',
+        courierId: 'courier-123',
       };
+      const mockCourier = { id: 'courier-123', userId: 'user-123' };
       const mockUpdatedOrder = { ...mockOrder, status: OrderStatus.PICKED_UP };
 
-      (mockPrismaService.order.findUnique as jest.Mock).mockResolvedValue(
+      (mockPrismaService.courierProfile.findUnique as jest.Mock).mockResolvedValue(mockCourier);
+      (mockPrismaService.order.findFirst as jest.Mock).mockResolvedValue(
         mockOrder,
       );
       (mockPrismaService.order.update as jest.Mock).mockResolvedValue(
@@ -381,7 +425,7 @@ describe('OrdersService', () => {
         tenantId: 'tenant-123',
       };
 
-      (mockPrismaService.order.findUnique as jest.Mock).mockResolvedValue(
+      (mockPrismaService.order.findFirst as jest.Mock).mockResolvedValue(
         mockOrder,
       );
       (mockPrismaService.order.update as jest.Mock).mockResolvedValue({
@@ -398,6 +442,122 @@ describe('OrdersService', () => {
 
       expect(mockPrismaService.merchantProfile.update).toHaveBeenCalled();
       expect(mockPrismaService.courierProfile.update).toHaveBeenCalled();
+    });
+  });
+
+  describe('bulkUpdateStatus', () => {
+    it('should update multiple orders status and handle financial records', async () => {
+      const bulkUpdateDto: BulkUpdateOrderStatusDto = {
+        orderIds: ['order-1', 'order-2'],
+        status: OrderStatus.DELIVERED,
+      };
+
+      const mockOrder1 = {
+        id: 'order-1',
+        status: OrderStatus.IN_TRANSIT,
+        merchantId: 'merchant-123',
+        courierId: 'courier-123',
+        codAmount: new Decimal(100),
+        price: new Decimal(10),
+        tenantId: 'tenant-123',
+      };
+      const mockOrder2 = {
+        id: 'order-2',
+        status: OrderStatus.IN_TRANSIT,
+        merchantId: 'merchant-123',
+        courierId: 'courier-123',
+        codAmount: new Decimal(50),
+        price: new Decimal(5),
+        tenantId: 'tenant-123',
+      };
+
+      (mockPrismaService.order.findUnique as jest.Mock)
+        .mockResolvedValueOnce(mockOrder1)
+        .mockResolvedValueOnce(mockOrder2);
+      (mockPrismaService.order.update as jest.Mock).mockImplementation(({ data }) => data);
+
+      const result = await service.bulkUpdateStatus(bulkUpdateDto, {
+        sub: 'admin-user',
+        email: 'admin@example.com',
+        role: UserRole.ADMIN,
+        tenantId: 'tenant-123',
+      });
+
+      expect(result).toHaveLength(2);
+      expect(mockPrismaService.merchantProfile.update).toHaveBeenCalledTimes(2);
+      expect(mockPrismaService.courierProfile.update).toHaveBeenCalledTimes(2);
+      expect(mockPrismaService.orderHistory.create).toHaveBeenCalledTimes(2);
+    });
+
+    it('should skip orders already in the target status', async () => {
+      const bulkUpdateDto: BulkUpdateOrderStatusDto = {
+        orderIds: ['order-1'],
+        status: OrderStatus.DELIVERED,
+      };
+
+      const mockOrder1 = {
+        id: 'order-1',
+        status: OrderStatus.DELIVERED,
+        tenantId: 'tenant-123',
+      };
+
+      (mockPrismaService.order.findUnique as jest.Mock).mockResolvedValue(mockOrder1);
+
+      const result = await service.bulkUpdateStatus(bulkUpdateDto, {
+        sub: 'admin-user',
+        email: 'admin@example.com',
+        role: UserRole.ADMIN,
+        tenantId: 'tenant-123',
+      });
+
+      expect(result).toHaveLength(0);
+      expect(mockPrismaService.order.update).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('bulkAssign', () => {
+    it('should assign multiple orders to a courier successfully', async () => {
+      const bulkAssignDto: BulkAssignOrderDto = {
+        orderIds: ['order-1', 'order-2'],
+        courierId: 'courier-123',
+      };
+
+      const mockCourier = { id: 'courier-123', tenantId: 'tenant-123' };
+      const mockOrder1 = { id: 'order-1', status: OrderStatus.CREATED, tenantId: 'tenant-123' };
+      const mockOrder2 = { id: 'order-2', status: OrderStatus.CREATED, tenantId: 'tenant-123' };
+
+      (mockPrismaService.courierProfile.findUnique as jest.Mock).mockResolvedValue(mockCourier);
+      (mockPrismaService.order.findUnique as jest.Mock)
+        .mockResolvedValueOnce(mockOrder1)
+        .mockResolvedValueOnce(mockOrder2);
+
+      const result = await service.bulkAssign(bulkAssignDto, {
+        sub: 'admin-user',
+        email: 'admin@example.com',
+        role: UserRole.ADMIN,
+        tenantId: 'tenant-123',
+      });
+
+      expect(result).toHaveLength(2);
+      expect(mockPrismaService.order.update).toHaveBeenCalledTimes(2);
+      expect(mockPrismaService.orderHistory.create).toHaveBeenCalledTimes(2);
+    });
+
+    it('should throw ForbiddenException if courier is in different tenant', async () => {
+      const bulkAssignDto: BulkAssignOrderDto = {
+        orderIds: ['order-1'],
+        courierId: 'courier-123',
+      };
+
+      const mockCourier = { id: 'courier-123', tenantId: 'different-tenant' };
+      (mockPrismaService.courierProfile.findUnique as jest.Mock).mockResolvedValue(mockCourier);
+
+      await expect(service.bulkAssign(bulkAssignDto, {
+        sub: 'admin-user',
+        email: 'admin@example.com',
+        role: UserRole.ADMIN,
+        tenantId: 'tenant-123',
+      })).rejects.toThrow(ForbiddenException);
     });
   });
 });

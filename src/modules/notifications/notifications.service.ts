@@ -1,6 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../core/prisma.service';
 import { OrderStatus, NotificationType } from '@prisma/client';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import { paginate, PaginationResult } from '../../common/utils/pagination.util';
 
 interface NotificationPayload {
   type: string;
@@ -13,44 +15,16 @@ interface NotificationPayload {
 
 @Injectable()
 export class NotificationsService {
-  private connectedUsers = new Map<string, Set<string>>();
-
-  constructor(private readonly prisma: PrismaService) {}
-
-  /**
-   * Register a user connection for WebSocket notifications
-   */
-  registerUserConnection(userId: string, socketId: string, tenantId: string) {
-    const userKey = `${tenantId}:${userId}`;
-    if (!this.connectedUsers.has(userKey)) {
-      this.connectedUsers.set(userKey, new Set());
-    }
-    this.connectedUsers.get(userKey)?.add(socketId);
-  }
-
-  /**
-   * Unregister a user connection
-   */
-  unregisterUserConnection(userId: string, socketId: string, tenantId: string) {
-    const userKey = `${tenantId}:${userId}`;
-    if (this.connectedUsers.has(userKey)) {
-      this.connectedUsers.get(userKey)?.delete(socketId);
-    }
-  }
-
-  /**
-   * Get connected socket IDs for a user
-   */
-  getUserConnections(userId: string, tenantId: string): Set<string> {
-    const userKey = `${tenantId}:${userId}`;
-    return this.connectedUsers.get(userKey) || new Set();
-  }
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly eventEmitter: EventEmitter2,
+  ) { }
 
   /**
    * Create a notification record in the database
    */
   async createNotification(payload: NotificationPayload) {
-    return await this.prisma.notification.create({
+    const notification = await this.prisma.notification.create({
       data: {
         type: payload.type as NotificationType,
         orderId: payload.orderId,
@@ -61,6 +35,29 @@ export class NotificationsService {
         isRead: false,
       },
     });
+
+    // Emit event for real-time delivery
+    this.eventEmitter.emit('notification.created', notification);
+
+    return notification;
+  }
+
+  /**
+   * Get all notifications for a user with pagination
+   */
+  async findAll(userId: string, tenantId: string, page = 1, limit = 20): Promise<PaginationResult<any>> {
+    return paginate(
+      this.prisma.notification,
+      {
+        where: {
+          recipientId: userId,
+          tenantId,
+        },
+        orderBy: { createdAt: 'desc' },
+      },
+      page,
+      limit,
+    );
   }
 
   /**
@@ -143,25 +140,36 @@ export class NotificationsService {
       RETURNED: 'Order has been returned',
     };
 
-    // Notify merchant
+    const message = `Order ${order.trackingNumber}: ${statusMessages[newStatus]}`;
+
+    // Emit detailed event for other listeners (e.g., SMS, Email)
+    this.eventEmitter.emit('order.status_updated', {
+      orderId,
+      status: newStatus,
+      tenantId,
+      message,
+      merchantUserId: order.merchant?.userId,
+      courierUserId: order.courier?.userId,
+    });
+
+    // Create DB notifications (which will trigger real-time updates via 'notification.created')
     if (order.merchant?.userId) {
       await this.createNotification({
         type: 'ORDER_STATUS_CHANGE',
         orderId,
         status: newStatus,
-        message: `Order ${order.trackingNumber}: ${statusMessages[newStatus]}`,
+        message,
         recipientId: order.merchant.userId,
         tenantId,
       });
     }
 
-    // Notify courier if assigned
     if (order.courier?.userId && newStatus !== OrderStatus.CREATED) {
       await this.createNotification({
         type: 'ORDER_STATUS_CHANGE',
         orderId,
         status: newStatus,
-        message: `Order ${order.trackingNumber}: ${statusMessages[newStatus]}`,
+        message,
         recipientId: order.courier.userId,
         tenantId,
       });
@@ -205,6 +213,33 @@ export class NotificationsService {
       message: `You have been assigned to deliver order ${order.trackingNumber}`,
       recipientId: courier.userId,
       tenantId,
+    });
+  }
+
+  /**
+   * Get Notification Preferences for a user
+   */
+  async getPreferences(userId: string) {
+    let prefs = await this.prisma.notificationPreference.findUnique({
+      where: { userId },
+    });
+
+    if (!prefs) {
+      prefs = await this.prisma.notificationPreference.create({
+        data: { userId },
+      });
+    }
+    return prefs;
+  }
+
+  /**
+   * Update Notification Preferences
+   */
+  async updatePreferences(userId: string, data: any) {
+    return await this.prisma.notificationPreference.upsert({
+      where: { userId },
+      create: { ...data, userId },
+      update: data,
     });
   }
 }

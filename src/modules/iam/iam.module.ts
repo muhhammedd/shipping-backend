@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, Global } from '@nestjs/common';
 import { HashingService, BcryptService } from './hashing/hashing.service';
 import { AuthenticationController } from './authentication/authentication.controller';
 import { AuthenticationService } from './authentication/authentication.service';
@@ -8,6 +8,7 @@ import { APP_GUARD } from '@nestjs/core';
 import { AccessTokenGuard } from './authentication/guards/access-token.guard';
 import { RolesGuard } from './authorization/guards/roles.guard';
 
+@Global()
 @Module({
   imports: [
     JwtModule.registerAsync({
@@ -38,4 +39,4 @@ import { RolesGuard } from './authorization/guards/roles.guard';
   controllers: [AuthenticationController],
   exports: [HashingService, JwtModule, AuthenticationService],
 })
-export class IamModule {}
+export class IamModule { }

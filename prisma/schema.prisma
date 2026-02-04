@@ -7,11 +7,215 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model Tenant {
+  id             String                @id @default(uuid())
+  name           String
+  slug           String                @unique
+  status         TenantStatus          @default(ACTIVE)
+  plan           SubscriptionPlan      @default(FREE)
+  maxOrders      Int                   @default(100)
+  expiresAt      DateTime?
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+  couriers       CourierProfile[]
+  merchants      MerchantProfile[]
+  notifications  Notification[]
+  orderHistories OrderHistory[]
+  orders         Order[]
+  uploadedFiles  UploadedFile[]
+  users          User[]
+  transactions   Transaction[]
+  payouts        Payout[]
+  shippingZones  ShippingZone[]
+  subscription   Subscription?
+  invoices       Invoice[]
+  paymentMethods PaymentMethod[]
+  apiKeys        ApiKey[]
+  webhooks       WebhookSubscription[]
+  shippingLabels ShippingLabel[]
+  serviceTypes   ServiceType[]
+  apiQuotas      ApiQuota[]
+  reconciliations Reconciliation[]
+
+  @@map("tenants")
+}
+
+model User {
+  id                    String           @id @default(uuid())
+  email                 String           @unique
+  passwordHash          String
+  firstName             String?
+  lastName              String?
+  role                  UserRole
+  isActive              Boolean          @default(true)
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
+  tenantId              String
+  courierProfile        CourierProfile?
+  merchantProfile       MerchantProfile?
+  notificationsReceived Notification[]   @relation("NotificationRecipient")
+  actionsPerformed      OrderHistory[]   @relation("ActionPerformer")
+  tenant                Tenant           @relation(fields: [tenantId], references: [id])
+  notificationPreference NotificationPreference?
+
+  @@index([tenantId])
+  @@map("users")
+}
+
+model MerchantProfile {
+  id             String          @id @default(uuid())
+  userId         String          @unique
+  tenantId       String
+  companyName    String
+  balance        Decimal         @default(0) @db.Decimal(10, 2)
+  creditLimit    Decimal         @default(0) @db.Decimal(10, 2)
+  tenant         Tenant          @relation(fields: [tenantId], references: [id])
+  user           User            @relation(fields: [userId], references: [id])
+  orders         Order[]
+  transactions   Transaction[]
+  payouts        Payout[]
+  addressBook    AddressBook[] // Saved addresses
+  orderTemplates OrderTemplate[] // Saved order templates
+
+  @@index([tenantId])
+  @@map("merchant_profiles")
+}
+
+model CourierProfile {
+  id             String           @id @default(uuid())
+  userId         String           @unique
+  tenantId       String
+  vehicleInfo    String?
+  wallet              Decimal          @default(0) @db.Decimal(10, 2)
+  status              CourierStatus    @default(OFFLINE)
+  isAvailable         Boolean          @default(false)
+  rating              Float            @default(5.0)
+  completedDeliveries Int              @default(0)
+  failedDeliveries    Int              @default(0)
+  tenant              Tenant           @relation(fields: [tenantId], references: [id])
+  user                User             @relation(fields: [userId], references: [id])
+  assignments         Order[]
+  FailedDelivery      FailedDelivery[]
+  transactions        Transaction[]
+  payouts             Payout[]
+
+  @@index([tenantId])
+  @@map("courier_profiles")
+}
+
+model Order {
+  id             String      @id @default(uuid())
+  trackingNumber String      @unique
+  status         OrderStatus @default(CREATED)
+  tenantId       String
+  merchantId     String
+  courierId      String?
+  recipientName  String
+  recipientPhone String
+  address        String
+  city           String
+  price          Decimal     @db.Decimal(10, 2)
+  codAmount      Decimal     @db.Decimal(10, 2)
+  notes          String? // Optional delivery notes
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+  deletedAt      DateTime? // Soft delete support
+  createdBy      String? // User who created the order
+  updatedBy      String? // User who last updated
+
+  notifications    Notification[]
+  history          OrderHistory[]
+  courier          CourierProfile?   @relation(fields: [courierId], references: [id])
+  merchant         MerchantProfile   @relation(fields: [merchantId], references: [id])
+  tenant           Tenant            @relation(fields: [tenantId], references: [id])
+  uploadedFiles    UploadedFile[]
+  shippingLabel    ShippingLabel?
+  orderNotes       OrderNote[] // Internal comments
+  deliveryProof    DeliveryProof? // Proof of delivery
+  timeSlot         DeliveryTimeSlot? // Delivery time slot
+  failedDeliveries FailedDelivery[] // Failed delivery attempts
+
+  @@index([tenantId])
+  @@index([merchantId])
+  @@index([courierId])
+  @@index([tenantId, status, createdAt])
+  @@index([tenantId, merchantId, status])
+  @@index([status, createdAt])
+  @@index([tenantId, city])
+  @@index([tenantId, createdAt])
+  @@index([deletedAt]) // For soft delete queries
+  @@map("orders")
+}
+
+model OrderHistory {
+  id          String      @id @default(uuid())
+  orderId     String
+  statusFrom  OrderStatus
+  statusTo    OrderStatus
+  changedById String
+  location    String?
+  timestamp   DateTime    @default(now())
+  tenantId    String
+  changedBy   User        @relation("ActionPerformer", fields: [changedById], references: [id])
+  order       Order       @relation(fields: [orderId], references: [id])
+  tenant      Tenant      @relation(fields: [tenantId], references: [id])
+
+  @@index([orderId])
+  @@index([tenantId])
+  @@map("order_histories")
+}
+
+model UploadedFile {
+  id           String   @id @default(uuid())
+  fileName     String
+  fileType     String
+  fileSize     Int
+  fileCategory String
+  filePath     String   @unique
+  tenantId     String
+  orderId      String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  order        Order?   @relation(fields: [orderId], references: [id])
+  tenant       Tenant   @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId])
+  @@index([orderId])
+  @@map("uploaded_files")
+}
+
+model Notification {
+  id          String           @id @default(uuid())
+  type        NotificationType
+  orderId     String
+  status      OrderStatus?
+  message     String
+  isRead      Boolean          @default(false)
+  recipientId String?
+  tenantId    String
+  createdAt   DateTime         @default(now())
+  order       Order            @relation(fields: [orderId], references: [id])
+  recipient   User?            @relation("NotificationRecipient", fields: [recipientId], references: [id])
+  tenant      Tenant           @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId])
+  @@index([orderId])
+  @@index([recipientId])
+  @@index([recipientId, isRead, createdAt])
+  @@map("notifications")
+}
+
 enum UserRole {
   SUPER_ADMIN
   ADMIN
   MERCHANT
   COURIER
+}
+
+enum CourierStatus {
+  AVAILABLE
+  BUSY
+  OFFLINE
 }
 
 enum TenantStatus {
@@ -44,195 +248,457 @@ enum NotificationType {
   SYSTEM_ALERT
 }
 
-model Tenant {
-  id        String           @id @default(uuid())
-  name      String
-  slug      String           @unique
-  status    TenantStatus     @default(ACTIVE)
-  plan      SubscriptionPlan @default(FREE)
-  maxOrders Int              @default(100)
-  expiresAt DateTime?
-  createdAt DateTime         @default(now())
-  updatedAt DateTime         @updatedAt
+model Transaction {
+  id            String          @id @default(uuid())
+  tenantId      String
+  merchantId    String?
+  courierId     String?
+  amount        Decimal         @db.Decimal(10, 2)
+  type          TransactionType
+  referenceType String // ORDER, PAYOUT, ADJUSTMENT
+  referenceId   String?
+  description   String?
+  createdAt     DateTime        @default(now())
 
-  // Relationships
-  users            User[]
-  merchants        MerchantProfile[]
-  couriers         CourierProfile[]
-  orders           Order[]
-  orderHistories   OrderHistory[]
-  uploadedFiles    UploadedFile[]
-  notifications    Notification[]
-
-  @@map("tenants")
-}
-
-model User {
-  id           String   @id @default(uuid())
-  email        String   @unique
-  passwordHash String
-  role         UserRole
-  isActive     Boolean  @default(true)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  // Multi-tenancy
-  tenantId String
-  tenant   Tenant @relation(fields: [tenantId], references: [id])
-
-  // Profile relationships
-  merchantProfile MerchantProfile?
-  courierProfile  CourierProfile?
-
-  // Audit trail
-  actionsPerformed OrderHistory[] @relation("ActionPerformer")
-  notificationsReceived Notification[] @relation("NotificationRecipient")
-
-  @@index([tenantId])
-  @@map("users")
-}
-
-model MerchantProfile {
-  id        String   @id @default(uuid())
-  userId    String   @unique
-  user      User     @relation(fields: [userId], references: [id])
-  tenantId  String
-  tenant    Tenant   @relation(fields: [tenantId], references: [id])
-  
-  companyName String
-  balance     Decimal  @default(0) @db.Decimal(10, 2)
-  
-  orders      Order[]
-
-  @@index([tenantId])
-  @@map("merchant_profiles")
-}
-
-model CourierProfile {
-  id        String   @id @default(uuid())
-  userId    String   @unique
-  user      User     @relation(fields: [userId], references: [id])
-  tenantId  String
-  tenant    Tenant   @relation(fields: [tenantId], references: [id])
-  
-  vehicleInfo String?
-  wallet      Decimal  @default(0) @db.Decimal(10, 2)
-  
-  assignments Order[]
-
-  @@index([tenantId])
-  @@map("courier_profiles")
-}
-
-model Order {
-  id             String      @id @default(uuid())
-  trackingNumber String      @unique
-  status         OrderStatus @default(CREATED)
-  
-  // Multi-tenancy
-  tenantId String
-  tenant   Tenant @relation(fields: [tenantId], references: [id])
-
-  // Merchant who created the order
-  merchantId String
-  merchant   MerchantProfile @relation(fields: [merchantId], references: [id])
-
-  // Courier assigned to the order
-  courierId String?
-  courier   CourierProfile? @relation(fields: [courierId], references: [id])
-
-  // Recipient Details
-  recipientName  String
-  recipientPhone String
-  address        String
-  city           String
-  
-  // Financials
-  price     Decimal @db.Decimal(10, 2)
-  codAmount Decimal @db.Decimal(10, 2)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // History
-  history OrderHistory[]
-  uploadedFiles UploadedFile[]
-  notifications Notification[]
+  tenant   Tenant           @relation(fields: [tenantId], references: [id])
+  merchant MerchantProfile? @relation(fields: [merchantId], references: [id])
+  courier  CourierProfile?  @relation(fields: [courierId], references: [id])
 
   @@index([tenantId])
   @@index([merchantId])
   @@index([courierId])
-  @@map("orders")
+  @@index([tenantId, merchantId, createdAt])
+  @@index([referenceType, referenceId])
+  @@index([tenantId, referenceType, referenceId])
+  @@index([tenantId, type, createdAt])
+  @@map("transactions")
 }
 
-model OrderHistory {
-  id        String      @id @default(uuid())
-  orderId   String
-  order     Order       @relation(fields: [orderId], references: [id])
-  
-  statusFrom OrderStatus
-  statusTo   OrderStatus
-  
-  changedById String
-  changedBy   User   @relation("ActionPerformer", fields: [changedById], references: [id])
-  
-  location    String?
-  timestamp   DateTime @default(now())
-  
-  // Multi-tenancy
-  tenantId String
-  tenant   Tenant @relation(fields: [tenantId], references: [id])
+model Payout {
+  id          String       @id @default(uuid())
+  tenantId    String
+  merchantId  String?
+  courierId   String?
+  amount      Decimal      @db.Decimal(10, 2)
+  status      PayoutStatus @default(PENDING)
+  method      String // BANK_TRANSFER, WALLET
+  details     Json?
+  createdAt   DateTime     @default(now())
+  processedAt DateTime?
+  processedById String? // ID of the admin who processed the payout
+
+  tenant   Tenant           @relation(fields: [tenantId], references: [id])
+  merchant MerchantProfile? @relation(fields: [merchantId], references: [id])
+  courier  CourierProfile?  @relation(fields: [courierId], references: [id])
+
+  @@index([tenantId])
+  @@index([merchantId])
+  @@index([courierId])
+  @@map("payouts")
+}
+
+model ShippingZone {
+  id           String        @id @default(uuid())
+  tenantId     String
+  name         String
+  cities       String[]
+  isActive     Boolean       @default(true)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  pricingRules PricingRule[]
+  tenant       Tenant        @relation(fields: [tenantId], references: [id])
+
+  @@unique([tenantId, name])
+  @@map("shipping_zones")
+}
+
+model PricingRule {
+  id                String       @id @default(uuid())
+  zoneId            String
+  basePrice         Decimal      @db.Decimal(10, 2)
+  additionalKgPrice Decimal      @default(0) @db.Decimal(10, 2)
+  codFee            Decimal      @default(0) @db.Decimal(10, 2)
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+  zone              ShippingZone @relation(fields: [zoneId], references: [id])
+
+  @@index([zoneId])
+  @@map("pricing_rules")
+}
+
+enum TransactionType {
+  CREDIT
+  DEBIT
+}
+
+enum PayoutStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  PAID
+}
+
+model Subscription {
+  id                   String             @id @default(uuid())
+  tenantId             String             @unique
+  plan                 SubscriptionPlan   @default(FREE)
+  status               SubscriptionStatus @default(ACTIVE)
+  currentPeriodStart   DateTime           @default(now())
+  currentPeriodEnd     DateTime
+  stripeCustomerId     String?
+  stripeSubscriptionId String?
+  cancelAtPeriodEnd    Boolean            @default(false)
+
+  tenant   Tenant    @relation(fields: [tenantId], references: [id])
+  invoices Invoice[]
+
+  @@map("subscriptions")
+}
+
+model Invoice {
+  id              String        @id @default(uuid())
+  tenantId        String
+  subscriptionId  String?
+  amount          Decimal       @db.Decimal(10, 2)
+  status          InvoiceStatus
+  currency        String        @default("USD")
+  stripeInvoiceId String?
+  paidAt          DateTime?
+  periodStart     DateTime
+  periodEnd       DateTime
+  pdfUrl          String?
+  createdAt       DateTime      @default(now())
+
+  tenant       Tenant        @relation(fields: [tenantId], references: [id])
+  subscription Subscription? @relation(fields: [subscriptionId], references: [id])
+
+  @@index([tenantId])
+  @@map("invoices")
+}
+
+model PaymentMethod {
+  id                    String  @id @default(uuid())
+  tenantId              String
+  type                  String  @default("card")
+  last4                 String
+  brand                 String?
+  expMonth              Int
+  expYear               Int
+  isDefault             Boolean @default(false)
+  stripePaymentMethodId String
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId])
+  @@map("payment_methods")
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  TRIALING
+}
+
+enum InvoiceStatus {
+  DRAFT
+  OPEN
+  PAID
+  UNCOLLECTIBLE
+  VOID
+}
+
+model ApiKey {
+  id          String    @id @default(uuid())
+  tenantId    String
+  key         String    @unique
+  name        String?
+  permissions String[] // e.g. ["orders:read", "orders:write"]
+  lastUsedAt  DateTime?
+  createdAt   DateTime  @default(now())
+  expiresAt   DateTime?
+  isActive    Boolean   @default(true)
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId])
+  @@map("api_keys")
+}
+
+model WebhookSubscription {
+  id        String   @id @default(uuid())
+  tenantId  String
+  url       String
+  events    String[] // e.g. ["order.created", "order.delivered"]
+  secret    String   @default(uuid())
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId])
+  @@map("webhook_subscriptions")
+}
+
+model ShippingLabel {
+  id          String   @id @default(uuid())
+  orderId     String   @unique
+  tenantId    String
+  labelUrl    String // S3 URL or local path
+  format      String // "A4" | "THERMAL"
+  generatedAt DateTime @default(now())
+
+  order  Order  @relation(fields: [orderId], references: [id])
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId])
+  @@index([orderId])
+  @@map("shipping_labels")
+}
+
+model ServiceType {
+  id              String  @id @default(uuid())
+  tenantId        String
+  code            String // "EXPRESS", "STANDARD", "ECONOMY"
+  name            String
+  deliveryDays    Int // Estimated delivery time
+  priceMultiplier Decimal @db.Decimal(3, 2)
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@unique([tenantId, code])
+  @@map("service_types")
+}
+
+model ApiQuota {
+  id           String           @id @default(uuid())
+  tenantId     String
+  plan         SubscriptionPlan
+  requestCount Int              @default(0)
+  periodStart  DateTime         @default(now())
+  periodEnd    DateTime
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@unique([tenantId, periodStart])
+  @@index([tenantId])
+  @@index([periodStart, periodEnd])
+  @@map("api_quotas")
+}
+
+// ============================================
+// NEW MODELS FOR ENHANCED FEATURES
+// ============================================
+
+model OrderNote {
+  id         String   @id @default(uuid())
+  orderId    String
+  userId     String // User who created the note
+  note       String   @db.Text
+  isInternal Boolean  @default(true) // Internal notes vs customer-visible
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
   @@index([orderId])
-  @@index([tenantId])
-  @@map("order_histories")
+  @@index([orderId, createdAt])
+  @@map("order_notes")
 }
 
-model UploadedFile {
+model DeliveryProof {
   id            String   @id @default(uuid())
-  fileName      String
-  fileType      String
-  fileSize      Int
-  fileCategory  String
-  filePath      String   @unique
-  
-  // Multi-tenancy
+  orderId       String   @unique
+  signatureUrl  String? // URL to signature image
+  photoUrl      String? // URL to delivery photo
+  recipientName String? // Who received the package
+  notes         String?  @db.Text
+  latitude      Float?
+  longitude     Float?
+  deliveredAt   DateTime @default(now())
+  createdAt     DateTime @default(now())
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@map("delivery_proofs")
+}
+
+model AddressBook {
+  id             String    @id @default(uuid())
+  merchantId     String
+  tenantId       String
+  label          String // "Home", "Office", "Warehouse"
+  recipientName  String
+  recipientPhone String
+  address        String
+  city           String
+  isDefault      Boolean   @default(false)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime? // Soft delete
+
+  merchant MerchantProfile @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+
+  @@index([merchantId])
+  @@index([tenantId, merchantId])
+  @@index([deletedAt])
+  @@map("address_book")
+}
+
+model OrderTemplate {
+  id             String    @id @default(uuid())
+  merchantId     String
+  tenantId       String
+  name           String // Template name
+  recipientName  String
+  recipientPhone String
+  address        String
+  city           String
+  price          Decimal   @db.Decimal(10, 2)
+  codAmount      Decimal   @db.Decimal(10, 2)
+  notes          String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime? // Soft delete
+
+  merchant MerchantProfile @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+
+  @@index([merchantId])
+  @@index([tenantId, merchantId])
+  @@index([deletedAt])
+  @@map("order_templates")
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  tenantId   String
+  userId     String? // User who performed the action
+  action     String // "ORDER_CREATED", "STATUS_UPDATED", etc.
+  entityType String // "Order", "User", "Tenant", etc.
+  entityId   String // ID of the affected entity
+  oldValue   Json? // Previous state
+  newValue   Json? // New state
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  @@index([tenantId])
+  @@index([tenantId, entityType, entityId])
+  @@index([tenantId, userId])
+  @@index([tenantId, createdAt])
+  @@index([entityType, entityId])
+  @@index([tenantId, action, createdAt])
+  @@map("audit_logs")
+}
+
+// Delivery Zones for zone-based pricing and coverage
+model DeliveryZone {
+  id            String   @id @default(uuid())
   tenantId      String
-  tenant        Tenant   @relation(fields: [tenantId], references: [id])
-  
-  // Optional: Link to order
-  orderId       String?
-  order         Order?   @relation(fields: [orderId], references: [id])
-  
+  name          String
+  cities        String[] // Array of cities covered
+  baseRate      Decimal  @db.Decimal(10, 2)
+  perKmRate     Decimal  @db.Decimal(10, 2)
+  estimatedDays Int // Estimated delivery days
+  isActive      Boolean  @default(true)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
-  
+
   @@index([tenantId])
-  @@index([orderId])
-  @@map("uploaded_files")
+  @@index([tenantId, isActive])
+  @@map("delivery_zones")
 }
 
-model Notification {
-  id          String            @id @default(uuid())
-  type        NotificationType
-  orderId     String
-  order       Order             @relation(fields: [orderId], references: [id])
-  status      OrderStatus?
-  message     String
-  isRead      Boolean           @default(false)
-  
-  // Recipient
-  recipientId String?
-  recipient   User?             @relation("NotificationRecipient", fields: [recipientId], references: [id])
-  
-  // Multi-tenancy
-  tenantId    String
-  tenant      Tenant            @relation(fields: [tenantId], references: [id])
-  
-  createdAt   DateTime          @default(now())
-  
-  @@index([tenantId])
+// Delivery time slot scheduling
+model DeliveryTimeSlot {
+  id        String   @id @default(uuid())
+  orderId   String   @unique
+  slotDate  DateTime
+  slotStart String // "09:00"
+  slotEnd   String // "12:00"
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([slotDate])
+  @@index([slotDate, slotStart])
+  @@map("delivery_time_slots")
+}
+
+// Failed delivery attempts tracking
+model FailedDelivery {
+  id              String    @id @default(uuid())
+  orderId         String
+  courierId       String
+  attemptNumber   Int
+  failureReason   String
+  notes           String?   @db.Text
+  photoUrl        String?
+  latitude        Float?
+  longitude       Float?
+  nextAttemptDate DateTime?
+  createdAt       DateTime  @default(now())
+
+  order   Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  courier CourierProfile @relation(fields: [courierId], references: [id])
+
   @@index([orderId])
-  @@index([recipientId])
-  @@map("notifications")
+  @@index([courierId])
+  @@index([nextAttemptDate])
+  @@map("failed_deliveries")
+}
+
+model NotificationPreference {
+  id               String   @id @default(uuid())
+  userId           String   @unique
+  emailEnabled     Boolean  @default(true)
+  smsEnabled       Boolean  @default(false)
+  pushEnabled      Boolean  @default(true)
+  orderUpdate      Boolean  @default(true) // Notify on status changes
+  deliveryAttempt  Boolean  @default(true) // Notify on failed attempts
+  marketingEnabled Boolean  @default(false)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("notification_preferences")
+}
+
+// Reconciliation of bulk transactions (e.g., bank statements vs system records)
+model Reconciliation {
+  id              String               @id @default(uuid())
+  tenantId        String
+  type            ReconciliationType
+  status          ReconciliationStatus @default(PENDING)
+  totalAmount     Decimal              @db.Decimal(10, 2)
+  matchedAmount   Decimal              @default(0) @db.Decimal(10, 2)
+  unmatchedAmount Decimal              @default(0) @db.Decimal(10, 2)
+  discrepancies   Json?
+  processedById   String?
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId])
+  @@map("reconciliations")
+}
+
+enum ReconciliationType {
+  BANK_STATEMENT
+  COD_COLLECTION
+  GATEWAY_SETTLEMENT
+}
+
+enum ReconciliationStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  PARTIAL
 }

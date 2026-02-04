@@ -11,6 +11,7 @@ import { Server, Socket } from 'socket.io';
 import { NotificationsService } from './notifications.service';
 import { Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { OnEvent } from '@nestjs/event-emitter';
 
 @WebSocketGateway({
   cors: {
@@ -20,10 +21,12 @@ import { JwtService } from '@nestjs/jwt';
     ],
     credentials: true,
   },
+  perMessageDeflate: {
+    threshold: 1024, // Only compress data larger than 1KB
+  },
 })
 export class NotificationsGateway
-  implements OnGatewayConnection, OnGatewayDisconnect
-{
+  implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   server: Server;
 
@@ -33,7 +36,7 @@ export class NotificationsGateway
   constructor(
     private readonly notificationsService: NotificationsService,
     private readonly jwtService: JwtService,
-  ) {}
+  ) { }
 
   async handleConnection(client: Socket) {
     try {
@@ -114,13 +117,28 @@ export class NotificationsGateway
     return { status: 'unsubscribed', orderId: data.orderId };
   }
 
+  @OnEvent('notification.created')
+  handleNotificationCreated(notification: any) {
+    const { tenantId, recipientId, type, message } = notification;
+    if (recipientId) {
+      this.sendNotificationToUser(recipientId, tenantId, notification);
+    }
+    // Logic for tenant-wide notifications if needed
+  }
+
+  @OnEvent('order.status_updated')
+  handleOrderStatusUpdated(payload: any) {
+    const { orderId, tenantId, status, message } = payload;
+    this.broadcastOrderStatusUpdate(orderId, tenantId, status, message);
+  }
+
   /**
    * Send notification to a specific user
    */
   sendNotificationToUser(userId: string, tenantId: string, notification: any) {
     const userKey = `${tenantId}:${userId}`;
     this.server.to(userKey).emit('notification', notification);
-    this.logger.log(
+    this.logger.debug(
       `Notification sent to user ${userId} in tenant ${tenantId}`,
     );
   }
@@ -131,7 +149,7 @@ export class NotificationsGateway
   sendNotificationToTenant(tenantId: string, notification: any) {
     const tenantRoom = `tenant:${tenantId}`;
     this.server.to(tenantRoom).emit('notification', notification);
-    this.logger.log(`Notification sent to all users in tenant ${tenantId}`);
+    this.logger.debug(`Notification sent to all users in tenant ${tenantId}`);
   }
 
   /**
@@ -152,7 +170,7 @@ export class NotificationsGateway
       timestamp: new Date(),
     });
 
-    this.logger.log(
+    this.logger.debug(
       `Order status update broadcasted for order ${orderId} in tenant ${tenantId}`,
     );
   }
@@ -182,7 +200,7 @@ export class NotificationsGateway
       timestamp: new Date(),
     });
 
-    this.logger.log(
+    this.logger.debug(
       `Order assignment broadcasted for order ${orderId} to courier ${courierId}`,
     );
   }
@@ -202,7 +220,7 @@ export class NotificationsGateway
       timestamp: new Date(),
     });
 
-    this.logger.log(
+    this.logger.debug(
       `Merchant balance update sent to ${merchantId} in tenant ${tenantId}`,
     );
   }
@@ -222,7 +240,7 @@ export class NotificationsGateway
       timestamp: new Date(),
     });
 
-    this.logger.log(
+    this.logger.debug(
       `Courier wallet update sent to ${courierId} in tenant ${tenantId}`,
     );
   }

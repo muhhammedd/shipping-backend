@@ -17,14 +17,14 @@ import * as fs from 'fs';
 
 @Controller('files')
 export class FilesController {
-  constructor(private readonly filesService: FilesService) {}
+  constructor(private readonly filesService: FilesService) { }
 
   @Post('upload')
   async uploadFile(
     @Body() uploadFileDto: UploadFileDto,
     @ActiveUser() user: ActiveUserData,
   ) {
-    return await this.filesService.uploadFile(uploadFileDto, user.tenantId);
+    return await this.filesService.uploadFile(uploadFileDto, user);
   }
 
   @Get(':id')
@@ -32,7 +32,7 @@ export class FilesController {
     @Param('id') fileId: string,
     @ActiveUser() user: ActiveUserData,
   ) {
-    return await this.filesService.getFile(fileId, user.tenantId);
+    return await this.filesService.getFile(fileId, user);
   }
 
   @Get(':id/download')
@@ -43,14 +43,19 @@ export class FilesController {
   ) {
     const fileData = await this.filesService.downloadFile(
       fileId,
-      user.tenantId,
+      user,
     );
 
-    if (!fs.existsSync(fileData.filePath)) {
-      throw new BadRequestException('File not found');
+    if (fileData.isRedirect) {
+      return res.redirect(fileData.url);
     }
 
-    res.download(fileData.filePath, fileData.fileName);
+    // For local driver, fileData.url is the relative path
+    const filePath = require('path').join(process.env.UPLOAD_DIR || './uploads', fileData.url);
+    if (!require('fs').existsSync(filePath)) {
+      throw new BadRequestException('File not found');
+    }
+    return res.download(filePath, fileData.fileName);
   }
 
   @Delete(':id')
@@ -58,7 +63,7 @@ export class FilesController {
     @Param('id') fileId: string,
     @ActiveUser() user: ActiveUserData,
   ) {
-    return await this.filesService.deleteFile(fileId, user.tenantId);
+    return await this.filesService.deleteFile(fileId, user);
   }
 
   @Get('order/:orderId/files')
@@ -66,6 +71,6 @@ export class FilesController {
     @Param('orderId') orderId: string,
     @ActiveUser() user: ActiveUserData,
   ) {
-    return await this.filesService.getFilesByOrder(orderId, user.tenantId);
+    return await this.filesService.getFilesByOrder(orderId, user);
   }
 }

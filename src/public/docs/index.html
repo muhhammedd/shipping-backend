@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shipex API Documentation</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f8fafc;
+            color: #1e293b;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 60px 20px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 48px;
+            font-weight: 700;
+            margin-bottom: 16px;
+        }
+
+        .header p {
+            font-size: 20px;
+            opacity: 0.9;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        .nav {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 40px;
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 20px;
+        }
+
+        .nav a {
+            padding: 12px 24px;
+            background: white;
+            border-radius: 8px;
+            text-decoration: none;
+            color: #1e293b;
+            font-weight: 600;
+            transition: all 0.3s;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .nav a:hover {
+            background: #667eea;
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .section {
+            background: white;
+            border-radius: 12px;
+            padding: 40px;
+            margin-bottom: 30px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .section h2 {
+            font-size: 32px;
+            margin-bottom: 20px;
+            color: #667eea;
+        }
+
+        .section h3 {
+            font-size: 24px;
+            margin-top: 30px;
+            margin-bottom: 16px;
+            color: #1e293b;
+        }
+
+        .section p {
+            line-height: 1.8;
+            color: #475569;
+            margin-bottom: 16px;
+        }
+
+        .code-block {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 20px;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 20px 0;
+            font-family: 'Monaco', 'Courier New', monospace;
+            font-size: 14px;
+        }
+
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 24px;
+            margin: 30px 0;
+        }
+
+        .feature-card {
+            padding: 24px;
+            background: #f8fafc;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+
+        .feature-card h4 {
+            font-size: 18px;
+            margin-bottom: 12px;
+            color: #1e293b;
+        }
+
+        .feature-card p {
+            color: #64748b;
+            font-size: 14px;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            background: #dbeafe;
+            color: #1e40af;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-right: 8px;
+        }
+
+        .badge.post {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .badge.get {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .badge.put {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .badge.delete {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="header">
+        <h1>📦 Shipex API</h1>
+        <p>Complete API Documentation for Shipping Platform Integration</p>
+    </div>
+
+    <div class="container">
+        <div class="nav">
+            <a href="#getting-started">Getting Started</a>
+            <a href="/api/docs" target="_blank">API Reference (Swagger)</a>
+            <a href="#sdk">SDK</a>
+            <a href="#examples">Examples</a>
+        </div>
+
+        <div class="section" id="getting-started">
+            <h2>🚀 Getting Started</h2>
+            <p>Welcome to the Shipex API! This guide will help you integrate our shipping platform into your
+                application.</p>
+
+            <h3>Authentication</h3>
+            <p>All API requests require authentication using an API key. You can generate an API key from your
+                dashboard.</p>
+
+            <div class="code-block">
+                curl -X GET https://api.shipex.com/api/v1/orders \
+                -H "X-API-Key: your-api-key-here"
+            </div>
+
+            <h3>Base URL</h3>
+            <p>All API endpoints are relative to:</p>
+            <div class="code-block">https://api.shipex.com/api/v1</div>
+
+            <h3>Rate Limiting</h3>
+            <p>API requests are rate-limited based on your subscription plan:</p>
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <h4>FREE Plan</h4>
+                    <p>100 requests per hour</p>
+                </div>
+                <div class="feature-card">
+                    <h4>BASIC Plan</h4>
+                    <p>1,000 requests per hour</p>
+                </div>
+                <div class="feature-card">
+                    <h4>PREMIUM Plan</h4>
+                    <p>10,000 requests per hour</p>
+                </div>
+                <div class="feature-card">
+                    <h4>ENTERPRISE Plan</h4>
+                    <p>Unlimited requests</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="section" id="sdk">
+            <h2>📚 SDK & Libraries</h2>
+            <p>Use our official SDK for easier integration:</p>
+
+            <h3>JavaScript/TypeScript</h3>
+            <div class="code-block">
+                npm install @shipex/sdk
+
+                import { ShipexClient } from '@shipex/sdk';
+
+                const client = new ShipexClient({
+                apiKey: 'your-api-key'
+                });
+
+                const order = await client.orders.create({
+                recipientName: 'John Doe',
+                recipientPhone: '+201234567890',
+                address: '123 Main St',
+                city: 'Cairo',
+                price: 500
+                });
+            </div>
+
+            <h3>Browser (CDN)</h3>
+            <div class="code-block">
+                &lt;script src="https://cdn.shipex.com/sdk/shipex.min.js"&gt;&lt;/script&gt;
+                &lt;script&gt;
+                const client = new ShipexClient({ apiKey: 'your-key' });
+                &lt;/script&gt;
+            </div>
+        </div>
+
+        <div class="section" id="examples">
+            <h2>💡 Common Use Cases</h2>
+
+            <h3>1. Calculate Shipping Rate</h3>
+            <div class="code-block">
+                POST /shipping/calculate-rate
+
+                {
+                "origin": { "city": "Cairo" },
+                "destination": { "city": "Alexandria" },
+                "weight": 2.5,
+                "serviceType": "EXPRESS",
+                "codAmount": 500
+                }
+            </div>
+
+            <h3>2. Create Order</h3>
+            <div class="code-block">
+                POST /orders
+
+                {
+                "recipientName": "John Doe",
+                "recipientPhone": "+201234567890",
+                "address": "123 Main Street",
+                "city": "Cairo",
+                "price": 500,
+                "codAmount": 500,
+                "weight": 2.5
+                }
+            </div>
+
+            <h3>3. Generate Shipping Label</h3>
+            <div class="code-block">
+                POST /labels/generate
+
+                {
+                "orderId": "order-uuid",
+                "format": "A4"
+                }
+            </div>
+
+            <h3>4. Track Order (Public)</h3>
+            <div class="code-block">
+                GET /public/track/SHX123456789
+
+                // No authentication required!
+            </div>
+
+            <h3>5. Validate Address</h3>
+            <div class="code-block">
+                POST /shipping/validate-address
+
+                {
+                "address": "123 Main Street",
+                "city": "Cairo",
+                "country": "Egypt"
+                }
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>🔗 Quick Links</h2>
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <h4>📖 API Reference</h4>
+                    <p><a href="/api/docs" target="_blank" style="color: #667eea;">Interactive Swagger Documentation</a>
+                    </p>
+                </div>
+                <div class="feature-card">
+                    <h4>🎨 Tracking Widget</h4>
+                    <p><a href="/widget/tracking.html" target="_blank" style="color: #667eea;">Embeddable Tracking
+                            Widget</a></p>
+                </div>
+                <div class="feature-card">
+                    <h4>📊 Dashboard</h4>
+                    <p><a href="/dashboard/quotas.html" target="_blank" style="color: #667eea;">API Quota Dashboard</a>
+                    </p>
+                </div>
+                <div class="feature-card">
+                    <h4>💬 Support</h4>
+                    <p>Email: support@shipex.com</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>📋 Available Endpoints</h2>
+            <p>Here's a quick overview of our main API endpoints:</p>
+
+            <h3>Orders</h3>
+            <p>
+                <span class="badge post">POST</span> /orders - Create order<br>
+                <span class="badge get">GET</span> /orders - List orders<br>
+                <span class="badge get">GET</span> /orders/:id - Get order<br>
+                <span class="badge put">PUT</span> /orders/:id/status - Update status
+            </p>
+
+            <h3>Shipping</h3>
+            <p>
+                <span class="badge post">POST</span> /shipping/calculate-rate - Calculate rate<br>
+                <span class="badge post">POST</span> /shipping/validate-address - Validate address<br>
+                <span class="badge get">GET</span> /shipping/autocomplete - Address autocomplete<br>
+                <span class="badge get">GET</span> /shipping/cities - List cities
+            </p>
+
+            <h3>Labels</h3>
+            <p>
+                <span class="badge post">POST</span> /labels/generate - Generate label<br>
+                <span class="badge post">POST</span> /labels/generate/bulk - Bulk generate<br>
+                <span class="badge get">GET</span> /labels/order/:id - Get label<br>
+                <span class="badge get">GET</span> /labels/order/:id/download - Download PDF
+            </p>
+
+            <h3>Tracking (Public)</h3>
+            <p>
+                <span class="badge get">GET</span> /public/track/:trackingNumber - Track order<br>
+                <span class="badge get">GET</span> /track/:trackingNumber - Track order (alias)
+            </p>
+
+            <h3>Rate Limiting</h3>
+            <p>
+                <span class="badge get">GET</span> /rate-limit/usage - Get quota usage<br>
+                <span class="badge get">GET</span> /rate-limit/stats - Get statistics
+            </p>
+        </div>
+    </div>
+</body>
+
+</html>

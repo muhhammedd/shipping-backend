@@ -1,26 +1,24 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable, BadRequestException, ForbiddenException, Inject } from '@nestjs/common';
 import { UploadFileDto } from './dto/upload-file.dto';
 import { PrismaService } from '../core/prisma.service';
-import * as fs from 'fs';
 import * as path from 'path';
 import { v4 as uuidv4 } from 'uuid';
+import { ActiveUserData } from '../../common/interfaces/active-user-data.interface';
+import { UserRole } from '@prisma/client';
+import type { StorageDriver } from './storage/storage.driver.interface';
 
 @Injectable()
 export class FilesService {
-  private readonly uploadDir = process.env.UPLOAD_DIR || './uploads';
   private readonly maxFileSize = 5 * 1024 * 1024; // 5MB
 
-  constructor(private readonly prisma: PrismaService) {
-    this.ensureUploadDirExists();
-  }
+  constructor(
+    private readonly prisma: PrismaService,
+    @Inject('STORAGE_DRIVER') private readonly storage: StorageDriver
+  ) { }
 
-  private ensureUploadDirExists(): void {
-    if (!fs.existsSync(this.uploadDir)) {
-      fs.mkdirSync(this.uploadDir, { recursive: true });
-    }
-  }
+  async uploadFile(uploadFileDto: UploadFileDto, user: ActiveUserData) {
+    const tenantId = user.tenantId;
 
-  async uploadFile(uploadFileDto: UploadFileDto, tenantId: string) {
     // Validate file size
     const fileSizeInBytes = parseInt(uploadFileDto.fileSize, 10);
     if (fileSizeInBytes > this.maxFileSize) {
@@ -43,14 +41,19 @@ export class FilesService {
     }
 
     try {
+      // Decode base64
+      const fileBuffer = Buffer.from(uploadFileDto.base64Data, 'base64');
+
       // Generate unique filename
       const fileExtension = this.getFileExtension(uploadFileDto.fileType);
       const uniqueFileName = `${uuidv4()}${fileExtension}`;
-      const filePath = path.join(this.uploadDir, uniqueFileName);
 
-      // Decode base64 and write file
-      const fileBuffer = Buffer.from(uploadFileDto.base64Data, 'base64');
-      fs.writeFileSync(filePath, fileBuffer);
+      // Upload using Strategy
+      await this.storage.upload({
+        buffer: fileBuffer,
+        fileName: uniqueFileName,
+        mimeType: uploadFileDto.fileType
+      }, uniqueFileName);
 
       // Save file metadata to database
       const savedFile = await this.prisma.uploadedFile.create({
@@ -65,13 +68,17 @@ export class FilesService {
         },
       });
 
+      const fileUrl = process.env.CDN_URL
+        ? `${process.env.CDN_URL}/${uniqueFileName}`
+        : `/api/v1/files/${savedFile.id}/download`;
+
       return {
         id: savedFile.id,
         fileName: savedFile.fileName,
         fileType: savedFile.fileType,
         fileSize: savedFile.fileSize,
         fileCategory: savedFile.fileCategory,
-        fileUrl: `/api/v1/files/${savedFile.id}/download`,
+        fileUrl,
         uploadedAt: savedFile.createdAt,
       };
     } catch (error) {
@@ -81,9 +88,10 @@ export class FilesService {
     }
   }
 
-  async getFile(fileId: string, tenantId: string) {
+  async getFile(fileId: string, user: ActiveUserData) {
     const file = await this.prisma.uploadedFile.findUnique({
       where: { id: fileId },
+      include: { order: true },
     });
 
     if (!file) {
@@ -91,37 +99,65 @@ export class FilesService {
     }
 
     // Verify tenant ownership
-    if (file.tenantId !== tenantId) {
-      throw new BadRequestException('Unauthorized access to file');
+    if (file.tenantId !== user.tenantId && user.role !== UserRole.SUPER_ADMIN) {
+      throw new ForbiddenException('Unauthorized access to file (tenant mismatch)');
+    }
+
+    // Role-based Access Check
+    if (user.role === UserRole.ADMIN || user.role === UserRole.SUPER_ADMIN) {
+      return file;
+    }
+
+    if (!file.orderId) {
+      throw new ForbiddenException('Access denied to general tenant files');
+    }
+
+    if (user.role === UserRole.MERCHANT) {
+      const merchant = await this.prisma.merchantProfile.findUnique({
+        where: { userId: user.sub },
+      });
+      if (!merchant || file.order?.merchantId !== merchant.id) {
+        throw new ForbiddenException('You do not have access to this file');
+      }
+    }
+
+    if (user.role === UserRole.COURIER) {
+      const courier = await this.prisma.courierProfile.findUnique({
+        where: { userId: user.sub },
+      });
+      if (!courier || file.order?.courierId !== courier.id) {
+        throw new ForbiddenException('You do not have access to this file');
+      }
     }
 
     return file;
   }
 
-  async downloadFile(fileId: string, tenantId: string) {
-    const file = await this.getFile(fileId, tenantId);
-    const filePath = path.join(this.uploadDir, file.filePath);
+  async downloadFile(fileId: string, user: ActiveUserData) {
+    const file = await this.getFile(fileId, user);
 
-    if (!fs.existsSync(filePath)) {
-      throw new BadRequestException('File not found on disk');
-    }
+    // Get URL from Strategy (S3 signed URL or local path)
+    const url = await this.storage.getReadUrl(file.filePath);
 
     return {
-      filePath,
       fileName: file.fileName,
       fileType: file.fileType,
+      url: url, // Returns signed URL for S3, or relative path for local
+      isRedirect: process.env.STORAGE_DRIVER === 's3'
     };
   }
 
-  async deleteFile(fileId: string, tenantId: string) {
-    const file = await this.getFile(fileId, tenantId);
+  async deleteFile(fileId: string, user: ActiveUserData) {
+    const file = await this.getFile(fileId, user);
+
+    // Only Admin can delete files
+    if (user.role !== UserRole.ADMIN && user.role !== UserRole.SUPER_ADMIN) {
+      throw new ForbiddenException('Only admins can delete files');
+    }
 
     try {
-      // Delete file from disk
-      const filePath = path.join(this.uploadDir, file.filePath);
-      if (fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath);
-      }
+      // Delete using Strategy
+      await this.storage.delete(file.filePath);
 
       // Delete file metadata from database
       const deletedFile = await this.prisma.uploadedFile.delete({
@@ -136,11 +172,38 @@ export class FilesService {
     }
   }
 
-  async getFilesByOrder(orderId: string, tenantId: string) {
+  async getFilesByOrder(orderId: string, user: ActiveUserData) {
+    // Validate order access first
+    const order = await this.prisma.order.findUnique({
+      where: { id: orderId, tenantId: user.tenantId },
+    });
+
+    if (!order) {
+      throw new BadRequestException('Order not found in your tenant');
+    }
+
+    if (user.role === UserRole.MERCHANT) {
+      const merchant = await this.prisma.merchantProfile.findUnique({
+        where: { userId: user.sub },
+      });
+      if (!merchant || order.merchantId !== merchant.id) {
+        throw new ForbiddenException('You do not have access to this order\'s files');
+      }
+    }
+
+    if (user.role === UserRole.COURIER) {
+      const courier = await this.prisma.courierProfile.findUnique({
+        where: { userId: user.sub },
+      });
+      if (!courier || order.courierId !== courier.id) {
+        throw new ForbiddenException('You do not have access to this order\'s files');
+      }
+    }
+
     const files = await this.prisma.uploadedFile.findMany({
       where: {
         orderId,
-        tenantId,
+        tenantId: user.tenantId,
       },
       select: {
         id: true,
@@ -148,13 +211,16 @@ export class FilesService {
         fileType: true,
         fileSize: true,
         fileCategory: true,
+        filePath: true,
         createdAt: true,
       },
     });
 
     return files.map((file) => ({
       ...file,
-      fileUrl: `/api/v1/files/${file.id}/download`,
+      fileUrl: process.env.CDN_URL
+        ? `${process.env.CDN_URL}/${file.filePath}` // Note: need to include filePath in select for this
+        : `/api/v1/files/${file.id}/download`,
     }));
   }
 

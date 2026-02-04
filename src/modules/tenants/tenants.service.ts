@@ -1,11 +1,11 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../core/prisma.service';
 import { FilterTenantDto } from './dto/filter-tenant.dto';
 import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class TenantsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) { }
 
   async findAll(filterDto: FilterTenantDto) {
     const where: Prisma.TenantWhereInput = {};
@@ -54,6 +54,21 @@ export class TenantsService {
       },
     });
 
+    if (!tenant) {
+      throw new NotFoundException(`Tenant #${id} not found`);
+    }
+
     return tenant;
+  }
+
+  async updateStatus(id: string, status: any) {
+    try {
+      return await this.prisma.tenant.update({
+        where: { id },
+        data: { status },
+      });
+    } catch (error) {
+      throw new NotFoundException(`Tenant #${id} not found`);
+    }
   }
 }

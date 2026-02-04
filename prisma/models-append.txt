@@ -1,0 +1,35 @@
+model ServiceType {
+  id              String  @id @default(uuid())
+  tenantId        String
+  code            String  // "EXPRESS", "STANDARD", "ECONOMY"
+  name            String
+  deliveryDays    Int
+  priceMultiplier Decimal @db.Decimal(3, 2)
+  isActive        Boolean @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@unique([tenantId, code])
+  @@index([tenantId])
+  @@map("service_types")
+}
+
+model ApiQuota {
+  id           String           @id @default(uuid())
+  tenantId     String
+  plan         SubscriptionPlan
+  requestCount Int              @default(0)
+  periodStart  DateTime         @default(now())
+  periodEnd    DateTime
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@unique([tenantId, periodStart])
+  @@index([tenantId])
+  @@index([periodStart, periodEnd])
+  @@map("api_quotas")
+}
